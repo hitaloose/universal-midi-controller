@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useController } from '@/hooks/useController'
 import { useMidi } from '@/hooks/useMidi'
 import { ConfigPanel } from '@/components/ConfigPanel'
@@ -9,6 +9,7 @@ import { MidiDeviceSelector } from '@/components/MidiDeviceSelector'
 import { PadGrid } from '@/components/PadGrid'
 import { PresetPad } from '@/components/PresetPad'
 import { SetupModal } from '@/components/SetupModal'
+import { downloadConfig, readConfigFromFile } from '@/lib/storage'
 import type { ControllerConfig } from '@/lib/types'
 
 type PadRef =
@@ -20,6 +21,20 @@ export default function Home() {
     useController()
   const { outputs, selectedOutputId, setSelectedOutputId, sendMessage, error } = useMidi()
   const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
+  const importInputRef = useRef<HTMLInputElement>(null)
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const imported = await readConfigFromFile(file)
+      updateConfig(imported)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erro ao importar configuração')
+    } finally {
+      e.target.value = ''
+    }
+  }
 
   const hasConfig = config.presets.length > 0 || config.fxPads.length > 0
 
@@ -55,14 +70,37 @@ export default function Home() {
             error={error}
           />
         </div>
-        {hasConfig && (
+        <div className="flex items-center gap-3 shrink-0">
+          {hasConfig && (
+            <button
+              onClick={() => downloadConfig(config)}
+              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
+              Exportar
+            </button>
+          )}
           <button
-            onClick={() => updateConfig({ presets: [], fxPads: [] })}
-            className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors shrink-0"
+            onClick={() => importInputRef.current?.click()}
+            className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
           >
-            Resetar
+            Importar
           </button>
-        )}
+          {hasConfig && (
+            <button
+              onClick={() => updateConfig({ presets: [], fxPads: [] })}
+              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
+              Resetar
+            </button>
+          )}
+        </div>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={handleImport}
+        />
       </header>
 
       <div className="flex-1 flex flex-col gap-8 p-6 max-w-5xl mx-auto w-full">
