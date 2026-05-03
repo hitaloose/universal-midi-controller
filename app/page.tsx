@@ -1,65 +1,119 @@
-import Image from "next/image";
+'use client'
+
+import { useState } from 'react'
+import { useController } from '@/hooks/useController'
+import { useMidi } from '@/hooks/useMidi'
+import { ConfigPanel } from '@/components/ConfigPanel'
+import { FxPad } from '@/components/FxPad'
+import { MidiDeviceSelector } from '@/components/MidiDeviceSelector'
+import { PadGrid } from '@/components/PadGrid'
+import { PresetPad } from '@/components/PresetPad'
+import { SetupModal } from '@/components/SetupModal'
+import type { ControllerConfig } from '@/lib/types'
+
+type PadRef =
+  | { kind: 'preset'; id: string }
+  | { kind: 'fx'; id: string }
 
 export default function Home() {
+  const { config, activePresetId, fxStates, activatePreset, toggleFx, updateConfig } =
+    useController()
+  const { outputs, selectedOutputId, setSelectedOutputId, sendMessage, error } = useMidi()
+  const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
+
+  const hasConfig = config.presets.length > 0 || config.fxPads.length > 0
+
+  const handleActivatePreset = (id: string) => {
+    const preset = config.presets.find((p) => p.id === id)
+    if (preset) sendMessage(preset.midi)
+    activatePreset(id)
+  }
+
+  const handleToggleFx = (id: string) => {
+    const fx = config.fxPads.find((f) => f.id === id)
+    if (fx) {
+      const isCurrentlyOn = fxStates[id] ?? false
+      sendMessage(isCurrentlyOn ? fx.midiOff : fx.midiOn)
+    }
+    toggleFx(id)
+  }
+
+  const presetColumns = Math.min(Math.max(config.presets.length, 1), 8)
+  const fxColumns = Math.min(Math.max(config.fxPads.length, 1), 8)
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-zinc-950 text-white flex flex-col">
+      <header className="border-b border-zinc-800 px-6 py-3 flex items-center gap-6">
+        <h1 className="text-sm font-bold tracking-widest uppercase text-zinc-400 shrink-0">
+          MIDI Controller
+        </h1>
+        <div className="flex-1">
+          <MidiDeviceSelector
+            outputs={outputs}
+            selectedOutputId={selectedOutputId}
+            onSelect={setSelectedOutputId}
+            error={error}
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        {hasConfig && (
+          <button
+            onClick={() => updateConfig({ presets: [], fxPads: [] })}
+            className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors shrink-0"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+            Resetar
+          </button>
+        )}
+      </header>
+
+      <div className="flex-1 flex flex-col gap-8 p-6 max-w-5xl mx-auto w-full">
+        {hasConfig ? (
+          <>
+            {config.presets.length > 0 && (
+              <PadGrid label="Presets" columns={presetColumns}>
+                {config.presets.map((preset) => (
+                  <PresetPad
+                    key={preset.id}
+                    pad={preset}
+                    isActive={activePresetId === preset.id}
+                    onClick={() => handleActivatePreset(preset.id)}
+                    onConfigure={() => setConfiguringPad({ kind: 'preset', id: preset.id })}
+                  />
+                ))}
+              </PadGrid>
+            )}
+
+            {config.fxPads.length > 0 && (
+              <PadGrid label="FX" columns={fxColumns}>
+                {config.fxPads.map((fx) => (
+                  <FxPad
+                    key={fx.id}
+                    pad={fx}
+                    isOn={fxStates[fx.id] ?? false}
+                    onClick={() => handleToggleFx(fx.id)}
+                    onConfigure={() => setConfiguringPad({ kind: 'fx', id: fx.id })}
+                  />
+                ))}
+              </PadGrid>
+            )}
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-zinc-700 text-sm">
+            Configure o controller para começar.
+          </div>
+        )}
+      </div>
+
+      {!hasConfig && <SetupModal onConfirm={updateConfig} />}
+
+      <ConfigPanel
+        padRef={configuringPad}
+        config={config}
+        onSave={(updated: ControllerConfig) => {
+          updateConfig(updated)
+          setConfiguringPad(null)
+        }}
+        onClose={() => setConfiguringPad(null)}
+      />
+    </main>
+  )
 }
