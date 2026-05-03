@@ -98,14 +98,16 @@ function PresetEditor({
   const [name, setName] = useState(preset.name)
   const [midi, setMidi] = useState(preset.midi)
   const [fxStates, setFxStates] = useState(preset.fxInitialStates)
+  const [fxSoloStates, setFxSoloStates] = useState<Record<string, boolean>>(preset.fxSoloStates ?? {})
 
   useEffect(() => {
     setName(preset.name)
     setMidi(preset.midi)
     setFxStates(preset.fxInitialStates)
-  }, [preset.id, preset.name, preset.midi, preset.fxInitialStates])
+    setFxSoloStates(preset.fxSoloStates ?? {})
+  }, [preset.id, preset.name, preset.midi, preset.fxInitialStates, preset.fxSoloStates])
 
-  const handleSave = () => onSave({ ...preset, name, midi, fxInitialStates: fxStates })
+  const handleSave = () => onSave({ ...preset, name, midi, fxInitialStates: fxStates, fxSoloStates })
 
   return (
     <div className="flex flex-col gap-4">
@@ -121,22 +123,41 @@ function PresetEditor({
       <MidiFields label="Comando MIDI" value={midi} onChange={setMidi} />
 
       {fxPads.length > 0 && (
-        <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
-          <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
-            Estado inicial dos FX
-          </legend>
-          {fxPads.map((fx) => (
-            <label key={fx.id} className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={fxStates[fx.id] ?? false}
-                onChange={(e) => setFxStates((prev) => ({ ...prev, [fx.id]: e.target.checked }))}
-                className="accent-indigo-500 w-4 h-4"
-              />
-              <span className="text-sm text-zinc-300">{fx.name}</span>
-            </label>
-          ))}
-        </fieldset>
+        <>
+          <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
+            <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
+              Estado inicial dos FX
+            </legend>
+            {fxPads.map((fx) => (
+              <label key={fx.id} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={fxStates[fx.id] ?? false}
+                  onChange={(e) => setFxStates((prev) => ({ ...prev, [fx.id]: e.target.checked }))}
+                  className="accent-indigo-500 w-4 h-4"
+                />
+                <span className="text-sm text-zinc-300">{fx.name}</span>
+              </label>
+            ))}
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
+            <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
+              FX no modo solo
+            </legend>
+            {fxPads.map((fx) => (
+              <label key={fx.id} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={fxSoloStates[fx.id] ?? false}
+                  onChange={(e) => setFxSoloStates((prev) => ({ ...prev, [fx.id]: e.target.checked }))}
+                  className="accent-red-500 w-4 h-4"
+                />
+                <span className="text-sm text-zinc-300">{fx.name}</span>
+              </label>
+            ))}
+          </fieldset>
+        </>
       )}
 
       <button

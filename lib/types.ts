@@ -19,6 +19,7 @@ export type PresetPad = {
   name: string
   midi: MidiMessage
   fxInitialStates: Record<string, boolean>
+  fxSoloStates: Record<string, boolean>
 }
 
 export type ControllerConfig = {

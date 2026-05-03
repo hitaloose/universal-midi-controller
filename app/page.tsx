@@ -17,8 +17,17 @@ type PadRef =
   | { kind: 'fx'; id: string }
 
 export default function Home() {
-  const { config, activePresetId, fxStates, activatePreset, toggleFx, updateConfig } =
-    useController()
+  const {
+    config,
+    activePresetId,
+    soloPresetId,
+    fxStates,
+    activatePreset,
+    toggleFx,
+    updateConfig,
+    enterSoloMode,
+    exitSoloMode,
+  } = useController()
   const { outputs, selectedOutputId, setSelectedOutputId, sendMessage, error } = useMidi()
   const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
@@ -38,10 +47,28 @@ export default function Home() {
 
   const hasConfig = config.presets.length > 0 || config.fxPads.length > 0
 
-  const handleActivatePreset = (id: string) => {
-    const preset = config.presets.find((p) => p.id === id)
-    if (preset) sendMessage(preset.midi)
-    activatePreset(id)
+  const handlePresetClick = (id: string) => {
+    if (soloPresetId === id) {
+      const { toActivate, toDeactivate } = exitSoloMode()
+      toActivate.forEach((fxId) => {
+        const fx = config.fxPads.find((f) => f.id === fxId)
+        if (fx) sendMessage(fx.midiOn)
+      })
+      toDeactivate.forEach((fxId) => {
+        const fx = config.fxPads.find((f) => f.id === fxId)
+        if (fx) sendMessage(fx.midiOff)
+      })
+    } else if (activePresetId === id) {
+      const toActivate = enterSoloMode(id)
+      toActivate.forEach((fxId) => {
+        const fx = config.fxPads.find((f) => f.id === fxId)
+        if (fx) sendMessage(fx.midiOn)
+      })
+    } else {
+      const preset = config.presets.find((p) => p.id === id)
+      if (preset) sendMessage(preset.midi)
+      activatePreset(id)
+    }
   }
 
   const handleToggleFx = (id: string) => {
@@ -113,7 +140,8 @@ export default function Home() {
                     key={preset.id}
                     pad={preset}
                     isActive={activePresetId === preset.id}
-                    onClick={() => handleActivatePreset(preset.id)}
+                    isSolo={soloPresetId === preset.id}
+                    onClick={() => handlePresetClick(preset.id)}
                     onConfigure={() => setConfiguringPad({ kind: 'preset', id: preset.id })}
                   />
                 ))}

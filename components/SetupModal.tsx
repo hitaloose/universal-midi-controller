@@ -24,6 +24,7 @@ function buildInitialConfig(nPresets: number, nFxPads: number): ControllerConfig
     name: `Preset ${i + 1}`,
     midi: { channel: 1, type: 'programChange' as const, data1: i, data2: 0 },
     fxInitialStates: Object.fromEntries(fxPads.map((fx) => [fx.id, false])),
+    fxSoloStates: Object.fromEntries(fxPads.map((fx) => [fx.id, false])),
   }))
 
   return { presets, fxPads }

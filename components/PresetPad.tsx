@@ -5,11 +5,12 @@ import type { PresetPad as PresetPadType } from '@/lib/types'
 type Props = {
   pad: PresetPadType
   isActive: boolean
+  isSolo: boolean
   onClick: () => void
   onConfigure: () => void
 }
 
-export function PresetPad({ pad, isActive, onClick, onConfigure }: Props) {
+export function PresetPad({ pad, isActive, isSolo, onClick, onConfigure }: Props) {
   return (
     <div className="relative group">
       <button
@@ -17,14 +18,16 @@ export function PresetPad({ pad, isActive, onClick, onConfigure }: Props) {
         className={`
           w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-2
           border-2 transition-all duration-150 select-none
-          ${isActive
-            ? 'bg-indigo-600 border-indigo-400 shadow-lg shadow-indigo-900/50'
-            : 'bg-zinc-800 border-zinc-700 hover:border-zinc-500 hover:bg-zinc-700'
+          ${isSolo
+            ? 'bg-red-700 border-red-500 shadow-lg shadow-red-900/50'
+            : isActive
+              ? 'bg-indigo-600 border-indigo-400 shadow-lg shadow-indigo-900/50'
+              : 'bg-zinc-800 border-zinc-700 hover:border-zinc-500 hover:bg-zinc-700'
           }
         `}
       >
-        <div className={`w-3 h-3 rounded-full ${isActive ? 'bg-white' : 'bg-zinc-600'}`} />
-        <span className={`text-sm font-medium text-center px-2 leading-tight ${isActive ? 'text-white' : 'text-zinc-400'}`}>
+        <div className={`w-3 h-3 rounded-full ${isSolo || isActive ? 'bg-white' : 'bg-zinc-600'}`} />
+        <span className={`text-sm font-medium text-center px-2 leading-tight ${isSolo || isActive ? 'text-white' : 'text-zinc-400'}`}>
           {pad.name}
         </span>
       </button>
