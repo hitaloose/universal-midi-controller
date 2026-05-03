@@ -3,7 +3,7 @@ const STATIC_CACHE = 'umc-static-v1'
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.add('/'))
+    caches.open(CACHE_NAME).then((cache) => cache.add('/universal-midi-controller/'))
   )
   self.skipWaiting()
 })
@@ -27,8 +27,8 @@ self.addEventListener('fetch', (e) => {
 
   // Assets estáticos do Next.js → Cache-First
   if (
-    url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/static/')
+    url.pathname.startsWith('/universal-midi-controller/_next/static/') ||
+    url.pathname.startsWith('/universal-midi-controller/static/')
   ) {
     e.respondWith(
       caches.match(request).then(
@@ -56,7 +56,7 @@ self.addEventListener('fetch', (e) => {
         .catch(() =>
           caches
             .match(request)
-            .then((cached) => cached || caches.match('/'))
+            .then((cached) => cached || caches.match('/universal-midi-controller/'))
         )
     )
     return
