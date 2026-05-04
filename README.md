@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Universal MIDI Controller
 
-## Getting Started
+Controlador MIDI universal para pedaleiras, rodando direto no navegador via Web MIDI API.
 
-First, run the development server:
+**[Acessar o app →](https://hitaloose.github.io/universal-midi-controller/)**
+
+---
+
+## O que é
+
+Uma interface web que transforma o navegador num controlador MIDI. Você configura pads de Preset e pads de FX, conecta qualquer dispositivo MIDI via USB e dispara mensagens MIDI sem instalar nada.
+
+Funciona como PWA — pode ser instalado na tela inicial do computador ou celular para uso offline.
+
+## Funcionalidades
+
+- **Pads de Preset** — cada preset envia uma mensagem MIDI e define o estado inicial dos FX
+- **Pads de FX** — botões toggle que enviam mensagens MIDI On/Off independentes
+- **Modo Solo** — clique duas vezes num preset ativo para isolar os FX daquele preset
+- **Seletor de dispositivo MIDI** — escolha entre todos os outputs MIDI conectados ao sistema
+- **Exportar / Importar** — salva e carrega a configuração como arquivo JSON
+- **PWA** — instalável, funciona offline após o primeiro carregamento
+
+## Tecnologias
+
+- [Next.js 16](https://nextjs.org/) com App Router e exportação estática
+- [React 19](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Tailwind CSS v4](https://tailwindcss.com/)
+- [Web MIDI API](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API)
+
+## Rodando localmente
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> **Requisito:** a Web MIDI API exige um navegador com suporte (Chrome/Edge) e, em alguns sistemas, permissão explícita para acesso a dispositivos MIDI.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Build
 
-## Learn More
+```bash
+npm run build   # gera a pasta out/ com o site estático
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+O projeto é publicado automaticamente no GitHub Pages via GitHub Actions a cada push na branch `main`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Para ativar o deploy num fork:
+1. Vá em **Settings → Pages** do repositório
+2. Em **Build and deployment → Source**, selecione **GitHub Actions**
