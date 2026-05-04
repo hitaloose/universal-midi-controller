@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { MidiMessage } from '@/lib/types'
-import { sendMidi } from '@/lib/midi'
+import { sendMidi, sendSysEx } from '@/lib/midi'
 
 type UseMidiReturn = {
   outputs: MIDIOutput[]
   selectedOutputId: string | null
   setSelectedOutputId: (id: string | null) => void
   sendMessage: (msg: MidiMessage) => void
+  sendRaw: (bytes: number[]) => void
   error: string | null
 }
 
@@ -24,7 +25,7 @@ export function useMidi(): UseMidiReturn {
       return
     }
 
-    navigator.requestMIDIAccess().then(
+    navigator.requestMIDIAccess({ sysex: true }).then(
       (midiAccess) => {
         setAccess(midiAccess)
         const refreshOutputs = () => {
@@ -48,5 +49,14 @@ export function useMidi(): UseMidiReturn {
     [access, selectedOutputId],
   )
 
-  return { outputs, selectedOutputId, setSelectedOutputId, sendMessage, error }
+  const sendRaw = useCallback(
+    (bytes: number[]) => {
+      if (!access || !selectedOutputId) return
+      const output = access.outputs.get(selectedOutputId)
+      if (output) sendSysEx(output, bytes)
+    },
+    [access, selectedOutputId],
+  )
+
+  return { outputs, selectedOutputId, setSelectedOutputId, sendMessage, sendRaw, error }
 }

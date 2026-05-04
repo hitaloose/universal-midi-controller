@@ -46,6 +46,10 @@ Acesse `http://localhost:3000`.
 npm run build   # gera a pasta out/ com o site estático
 ```
 
+## Agradecimentos
+
+O suporte à **Sonicake Pocket Master** (tap delay via SysEx) só foi possível graças ao trabalho de engenharia reversa documentado no repositório [**suckyble/PocketEdit**](https://github.com/suckyble/PocketEdit), que mapeou os comandos SysEx usados pelo app oficial para definir o tempo de delay.
+
 ## Deploy
 
 O projeto é publicado automaticamente no GitHub Pages via GitHub Actions a cada push na branch `main`.

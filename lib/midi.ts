@@ -19,3 +19,10 @@ export function sendMidi(output: MIDIOutput, msg: MidiMessage): void {
   )
   output.send(bytes)
 }
+
+export function sendSysEx(output: MIDIOutput, bytes: number[]): void {
+  console.log(
+    `[SYSEX OUT] ${output.name} | bytes=[${bytes.map((b) => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(', ')}]`,
+  )
+  output.send(bytes)
+}

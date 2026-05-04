@@ -9,8 +9,11 @@ import { MidiDeviceSelector } from '@/components/MidiDeviceSelector'
 import { PadGrid } from '@/components/PadGrid'
 import { PresetPad } from '@/components/PresetPad'
 import { SetupModal } from '@/components/SetupModal'
+import { TapTempoBlock } from '@/components/TapTempoBlock'
+import { POCKET_MASTER_DELAY_TABLE } from '@/lib/pocketMasterDelayData'
 import { downloadConfig, readConfigFromFile } from '@/lib/storage'
 import type { ControllerConfig } from '@/lib/types'
+import { useTapTempo } from '@/hooks/useTapTempo'
 
 type PadRef =
   | { kind: 'preset'; id: string }
@@ -28,7 +31,8 @@ export default function Home() {
     enterSoloMode,
     exitSoloMode,
   } = useController()
-  const { outputs, selectedOutputId, setSelectedOutputId, sendMessage, error } = useMidi()
+  const { outputs, selectedOutputId, setSelectedOutputId, sendMessage, sendRaw, error } = useMidi()
+  const tapTempo = useTapTempo()
   const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -68,6 +72,10 @@ export default function Home() {
       const preset = config.presets.find((p) => p.id === id)
       if (preset) sendMessage(preset.midi)
       activatePreset(id)
+      if (tapTempo.isEnabled && tapTempo.closestMs !== null) {
+        const bytes = POCKET_MASTER_DELAY_TABLE[tapTempo.closestMs]
+        if (bytes) sendRaw(bytes)
+      }
     }
   }
 
@@ -161,6 +169,17 @@ export default function Home() {
                 ))}
               </PadGrid>
             )}
+
+            <TapTempoBlock
+              isEnabled={tapTempo.isEnabled}
+              bpm={tapTempo.bpm}
+              subdivision={tapTempo.subdivision}
+              delayMs={tapTempo.delayMs}
+              closestMs={tapTempo.closestMs}
+              onTap={tapTempo.tap}
+              onCycleSubdivision={tapTempo.cycleSubdivision}
+              onDisable={tapTempo.disable}
+            />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-zinc-700 text-sm">
