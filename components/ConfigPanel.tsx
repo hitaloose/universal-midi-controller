@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ControllerConfig, FxPad, MidiMessage, MidiMessageType, PresetPad } from '@/lib/types'
+import { KeyBindingField } from '@/components/KeyBindingField'
 
 type PadRef =
   | { kind: 'preset'; id: string }
@@ -89,25 +90,29 @@ function MidiFields({
 function PresetEditor({
   preset,
   fxPads,
+  usedKeys,
   onSave,
 }: {
   preset: PresetPad
   fxPads: FxPad[]
+  usedKeys: Set<string>
   onSave: (p: PresetPad) => void
 }) {
   const [name, setName] = useState(preset.name)
   const [midi, setMidi] = useState(preset.midi)
   const [fxStates, setFxStates] = useState(preset.fxInitialStates)
   const [fxSoloStates, setFxSoloStates] = useState<Record<string, boolean>>(preset.fxSoloStates ?? {})
+  const [keyBinding, setKeyBinding] = useState(preset.keyBinding)
 
   useEffect(() => {
     setName(preset.name)
     setMidi(preset.midi)
     setFxStates(preset.fxInitialStates)
     setFxSoloStates(preset.fxSoloStates ?? {})
-  }, [preset.id, preset.name, preset.midi, preset.fxInitialStates, preset.fxSoloStates])
+    setKeyBinding(preset.keyBinding)
+  }, [preset.id, preset.name, preset.midi, preset.fxInitialStates, preset.fxSoloStates, preset.keyBinding])
 
-  const handleSave = () => onSave({ ...preset, name, midi, fxInitialStates: fxStates, fxSoloStates })
+  const handleSave = () => onSave({ ...preset, name, midi, fxInitialStates: fxStates, fxSoloStates, keyBinding })
 
   return (
     <div className="flex flex-col gap-4">
@@ -119,6 +124,8 @@ function PresetEditor({
           className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
         />
       </label>
+
+      <KeyBindingField value={keyBinding} usedKeys={usedKeys} onChange={setKeyBinding} />
 
       <MidiFields label="Comando MIDI" value={midi} onChange={setMidi} />
 
@@ -170,18 +177,28 @@ function PresetEditor({
   )
 }
 
-function FxEditor({ fx, onSave }: { fx: FxPad; onSave: (f: FxPad) => void }) {
+function FxEditor({
+  fx,
+  usedKeys,
+  onSave,
+}: {
+  fx: FxPad
+  usedKeys: Set<string>
+  onSave: (f: FxPad) => void
+}) {
   const [name, setName] = useState(fx.name)
   const [midiOn, setMidiOn] = useState(fx.midiOn)
   const [midiOff, setMidiOff] = useState(fx.midiOff)
+  const [keyBinding, setKeyBinding] = useState(fx.keyBinding)
 
   useEffect(() => {
     setName(fx.name)
     setMidiOn(fx.midiOn)
     setMidiOff(fx.midiOff)
-  }, [fx.id, fx.name, fx.midiOn, fx.midiOff])
+    setKeyBinding(fx.keyBinding)
+  }, [fx.id, fx.name, fx.midiOn, fx.midiOff, fx.keyBinding])
 
-  const handleSave = () => onSave({ ...fx, name, midiOn, midiOff })
+  const handleSave = () => onSave({ ...fx, name, midiOn, midiOff, keyBinding })
 
   return (
     <div className="flex flex-col gap-4">
@@ -193,6 +210,8 @@ function FxEditor({ fx, onSave }: { fx: FxPad; onSave: (f: FxPad) => void }) {
           className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
         />
       </label>
+
+      <KeyBindingField value={keyBinding} usedKeys={usedKeys} onChange={setKeyBinding} />
 
       <MidiFields label="Comando MIDI ON" value={midiOn} onChange={setMidiOn} />
       <MidiFields label="Comando MIDI OFF" value={midiOff} onChange={setMidiOff} />
@@ -223,6 +242,24 @@ export function ConfigPanel({ padRef, config, onSave, onClose }: Props) {
   const preset = padRef.kind === 'preset' ? config.presets.find((p) => p.id === padRef.id) : null
   const fx = padRef.kind === 'fx' ? config.fxPads.find((f) => f.id === padRef.id) : null
 
+  const tapKeys = Object.values(config.tapTempoBindings ?? {}).filter(Boolean) as string[]
+
+  const presetUsedKeys = preset
+    ? new Set([
+        ...config.presets.filter((p) => p.id !== preset.id && p.keyBinding).map((p) => p.keyBinding!),
+        ...config.fxPads.filter((f) => f.keyBinding).map((f) => f.keyBinding!),
+        ...tapKeys,
+      ])
+    : new Set<string>()
+
+  const fxUsedKeys = fx
+    ? new Set([
+        ...config.presets.filter((p) => p.keyBinding).map((p) => p.keyBinding!),
+        ...config.fxPads.filter((f) => f.id !== fx.id && f.keyBinding).map((f) => f.keyBinding!),
+        ...tapKeys,
+      ])
+    : new Set<string>()
+
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
@@ -240,9 +277,9 @@ export function ConfigPanel({ padRef, config, onSave, onClose }: Props) {
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {preset && (
-            <PresetEditor preset={preset} fxPads={config.fxPads} onSave={handleSavePreset} />
+            <PresetEditor preset={preset} fxPads={config.fxPads} usedKeys={presetUsedKeys} onSave={handleSavePreset} />
           )}
-          {fx && <FxEditor fx={fx} onSave={handleSaveFx} />}
+          {fx && <FxEditor fx={fx} usedKeys={fxUsedKeys} onSave={handleSaveFx} />}
         </div>
       </aside>
     </>

@@ -12,6 +12,7 @@ export type FxPad = {
   name: string
   midiOn: MidiMessage
   midiOff: MidiMessage
+  keyBinding?: string
 }
 
 export type PresetPad = {
@@ -20,9 +21,17 @@ export type PresetPad = {
   midi: MidiMessage
   fxInitialStates: Record<string, boolean>
   fxSoloStates: Record<string, boolean>
+  keyBinding?: string
+}
+
+export type TapTempoBindings = {
+  tap?: string
+  cycleSubdivision?: string
+  disable?: string
 }
 
 export type ControllerConfig = {
   presets: PresetPad[]
   fxPads: FxPad[]
+  tapTempoBindings?: TapTempoBindings
 }

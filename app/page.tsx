@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useController } from '@/hooks/useController'
 import { useMidi } from '@/hooks/useMidi'
+import { useKeyboardBindings } from '@/hooks/useKeyboardBindings'
 import { ConfigPanel } from '@/components/ConfigPanel'
 import { FxPad } from '@/components/FxPad'
 import { MidiDeviceSelector } from '@/components/MidiDeviceSelector'
@@ -12,7 +13,7 @@ import { SetupModal } from '@/components/SetupModal'
 import { TapTempoBlock } from '@/components/TapTempoBlock'
 import { POCKET_MASTER_DELAY_TABLE } from '@/lib/pocketMasterDelayData'
 import { downloadConfig, readConfigFromFile } from '@/lib/storage'
-import type { ControllerConfig } from '@/lib/types'
+import type { ControllerConfig, TapTempoBindings } from '@/lib/types'
 import { useTapTempo } from '@/hooks/useTapTempo'
 
 type PadRef =
@@ -34,7 +35,10 @@ export default function Home() {
   const { outputs, selectedOutputId, setSelectedOutputId, sendMessage, sendRaw, error } = useMidi()
   const tapTempo = useTapTempo()
   const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
+  const [isTapConfigOpen, setIsTapConfigOpen] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
+
+  const isAnyConfigOpen = configuringPad !== null || isTapConfigOpen
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -48,8 +52,6 @@ export default function Home() {
       e.target.value = ''
     }
   }
-
-  const hasConfig = config.presets.length > 0 || config.fxPads.length > 0
 
   const handlePresetClick = (id: string) => {
     if (soloPresetId === id) {
@@ -88,8 +90,28 @@ export default function Home() {
     toggleFx(id)
   }
 
+  const handleUpdateTapTempoBindings = (bindings: TapTempoBindings) => {
+    updateConfig({ ...config, tapTempoBindings: bindings })
+  }
+
+  useKeyboardBindings({
+    config,
+    onPresetPad: handlePresetClick,
+    onFxPad: handleToggleFx,
+    onTap: tapTempo.tap,
+    onCycleSubdivision: tapTempo.cycleSubdivision,
+    onDisable: tapTempo.disable,
+    enabled: !isAnyConfigOpen,
+  })
+
+  const hasConfig = config.presets.length > 0 || config.fxPads.length > 0
   const presetColumns = Math.min(Math.max(config.presets.length, 1), 8)
   const fxColumns = Math.min(Math.max(config.fxPads.length, 1), 8)
+
+  const otherUsedKeys = new Set([
+    ...config.presets.filter((p) => p.keyBinding).map((p) => p.keyBinding!),
+    ...config.fxPads.filter((f) => f.keyBinding).map((f) => f.keyBinding!),
+  ])
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white flex flex-col">
@@ -179,6 +201,10 @@ export default function Home() {
               onTap={tapTempo.tap}
               onCycleSubdivision={tapTempo.cycleSubdivision}
               onDisable={tapTempo.disable}
+              tapTempoBindings={config.tapTempoBindings ?? {}}
+              onUpdateTapTempoBindings={handleUpdateTapTempoBindings}
+              otherUsedKeys={otherUsedKeys}
+              onConfigOpenChange={setIsTapConfigOpen}
             />
           </>
         ) : (

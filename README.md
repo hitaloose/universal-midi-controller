@@ -36,7 +36,7 @@ npm install
 npm run dev
 ```
 
-Acesse `http://localhost:3000`.
+Acesse `http://localhost:3000/universal-midi-controller`.
 
 > **Requisito:** a Web MIDI API exige um navegador com suporte (Chrome/Edge) e, em alguns sistemas, permissão explícita para acesso a dispositivos MIDI.
 
