@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ControllerConfig, FxPad, PresetPad } from '@/lib/types'
 import { loadConfig, saveConfig } from '@/lib/storage'
+import { makeId } from '@/lib/utils'
 
 type UseControllerReturn = {
   config: ControllerConfig
@@ -14,6 +15,10 @@ type UseControllerReturn = {
   updateConfig: (config: ControllerConfig) => void
   enterSoloMode: (id: string) => string[]
   exitSoloMode: () => { toActivate: string[]; toDeactivate: string[] }
+  addPreset: () => void
+  removePreset: (id: string) => void
+  addFxPad: () => void
+  removeFxPad: (id: string) => void
 }
 
 function buildDefaultFxStates(fxPads: FxPad[]): Record<string, boolean> {
@@ -114,6 +119,81 @@ export function useController(): UseControllerReturn {
     setFxSnapshot(null)
   }, [])
 
+  const addPreset = useCallback(() => {
+    setConfig((prev) => {
+      const n = prev.presets.length + 1
+      const newPreset: PresetPad = {
+        id: makeId(),
+        name: `Preset ${n}`,
+        midi: { channel: 1, type: 'programChange', data1: n - 1, data2: 0 },
+        fxInitialStates: Object.fromEntries(prev.fxPads.map((fx) => [fx.id, false])),
+        fxSoloStates: Object.fromEntries(prev.fxPads.map((fx) => [fx.id, false])),
+      }
+      const next = { ...prev, presets: [...prev.presets, newPreset] }
+      saveConfig(next)
+      return next
+    })
+  }, [])
+
+  const removePreset = useCallback((id: string) => {
+    setConfig((prev) => {
+      const next = { ...prev, presets: prev.presets.filter((p) => p.id !== id) }
+      saveConfig(next)
+      return next
+    })
+    setActivePresetId((prev) => (prev === id ? null : prev))
+    setSoloPresetId((prev) => {
+      if (prev === id) {
+        setFxSnapshot(null)
+        return null
+      }
+      return prev
+    })
+  }, [])
+
+  const addFxPad = useCallback(() => {
+    const newId = makeId()
+    setConfig((prev) => {
+      const n = prev.fxPads.length + 1
+      const newFx: FxPad = {
+        id: newId,
+        name: `FX ${n}`,
+        midiOn: { channel: 1, type: 'controlChange', data1: n - 1, data2: 127 },
+        midiOff: { channel: 1, type: 'controlChange', data1: n - 1, data2: 0 },
+      }
+      const updatedPresets = prev.presets.map((p) => ({
+        ...p,
+        fxInitialStates: { ...p.fxInitialStates, [newId]: false },
+        fxSoloStates: { ...p.fxSoloStates, [newId]: false },
+      }))
+      const next = { ...prev, fxPads: [...prev.fxPads, newFx], presets: updatedPresets }
+      saveConfig(next)
+      return next
+    })
+    setFxStates((prev) => ({ ...prev, [newId]: false }))
+  }, [])
+
+  const removeFxPad = useCallback((id: string) => {
+    setConfig((prev) => {
+      const updatedPresets = prev.presets.map((p) => {
+        const { [id]: _i, ...fxInitialStates } = p.fxInitialStates
+        const { [id]: _s, ...fxSoloStates } = p.fxSoloStates
+        return { ...p, fxInitialStates, fxSoloStates }
+      })
+      const next = {
+        ...prev,
+        fxPads: prev.fxPads.filter((fx) => fx.id !== id),
+        presets: updatedPresets,
+      }
+      saveConfig(next)
+      return next
+    })
+    setFxStates((prev) => {
+      const { [id]: _, ...rest } = prev
+      return rest
+    })
+  }, [])
+
   return {
     config,
     activePresetId,
@@ -124,5 +204,9 @@ export function useController(): UseControllerReturn {
     updateConfig,
     enterSoloMode,
     exitSoloMode,
+    addPreset,
+    removePreset,
+    addFxPad,
+    removeFxPad,
   }
 }

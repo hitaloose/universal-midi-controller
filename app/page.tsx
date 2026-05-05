@@ -31,6 +31,10 @@ export default function Home() {
     updateConfig,
     enterSoloMode,
     exitSoloMode,
+    addPreset,
+    removePreset,
+    addFxPad,
+    removeFxPad,
   } = useController()
   const { outputs, selectedOutputId, setSelectedOutputId, sendMessage, sendRaw, error } = useMidi()
   const tapTempo = useTapTempo()
@@ -129,6 +133,22 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {hasConfig && (
+            <>
+              <button
+                onClick={addPreset}
+                className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+              >
+                + Preset
+              </button>
+              <button
+                onClick={addFxPad}
+                className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+              >
+                + FX
+              </button>
+            </>
+          )}
+          {hasConfig && (
             <button
               onClick={() => downloadConfig(config)}
               className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
@@ -221,6 +241,11 @@ export default function Home() {
         config={config}
         onSave={(updated: ControllerConfig) => {
           updateConfig(updated)
+          setConfiguringPad(null)
+        }}
+        onRemove={(id, kind) => {
+          if (kind === 'preset') removePreset(id)
+          else removeFxPad(id)
           setConfiguringPad(null)
         }}
         onClose={() => setConfiguringPad(null)}

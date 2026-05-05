@@ -12,6 +12,7 @@ type Props = {
   padRef: PadRef | null
   config: ControllerConfig
   onSave: (config: ControllerConfig) => void
+  onRemove: (id: string, kind: 'preset' | 'fx') => void
   onClose: () => void
 }
 
@@ -92,11 +93,13 @@ function PresetEditor({
   fxPads,
   usedKeys,
   onSave,
+  onRemove,
 }: {
   preset: PresetPad
   fxPads: FxPad[]
   usedKeys: Set<string>
   onSave: (p: PresetPad) => void
+  onRemove: () => void
 }) {
   const [name, setName] = useState(preset.name)
   const [midi, setMidi] = useState(preset.midi)
@@ -173,6 +176,12 @@ function PresetEditor({
       >
         Salvar
       </button>
+      <button
+        onClick={onRemove}
+        className="text-xs text-zinc-600 hover:text-red-400 transition-colors text-center"
+      >
+        Remover preset
+      </button>
     </div>
   )
 }
@@ -181,10 +190,12 @@ function FxEditor({
   fx,
   usedKeys,
   onSave,
+  onRemove,
 }: {
   fx: FxPad
   usedKeys: Set<string>
   onSave: (f: FxPad) => void
+  onRemove: () => void
 }) {
   const [name, setName] = useState(fx.name)
   const [midiOn, setMidiOn] = useState(fx.midiOn)
@@ -222,11 +233,17 @@ function FxEditor({
       >
         Salvar
       </button>
+      <button
+        onClick={onRemove}
+        className="text-xs text-zinc-600 hover:text-red-400 transition-colors text-center"
+      >
+        Remover FX
+      </button>
     </div>
   )
 }
 
-export function ConfigPanel({ padRef, config, onSave, onClose }: Props) {
+export function ConfigPanel({ padRef, config, onSave, onRemove, onClose }: Props) {
   if (!padRef) return null
 
   const handleSavePreset = (updated: PresetPad) => {
@@ -277,9 +294,22 @@ export function ConfigPanel({ padRef, config, onSave, onClose }: Props) {
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {preset && (
-            <PresetEditor preset={preset} fxPads={config.fxPads} usedKeys={presetUsedKeys} onSave={handleSavePreset} />
+            <PresetEditor
+              preset={preset}
+              fxPads={config.fxPads}
+              usedKeys={presetUsedKeys}
+              onSave={handleSavePreset}
+              onRemove={() => onRemove(preset.id, 'preset')}
+            />
           )}
-          {fx && <FxEditor fx={fx} usedKeys={fxUsedKeys} onSave={handleSaveFx} />}
+          {fx && (
+            <FxEditor
+              fx={fx}
+              usedKeys={fxUsedKeys}
+              onSave={handleSaveFx}
+              onRemove={() => onRemove(fx.id, 'fx')}
+            />
+          )}
         </div>
       </aside>
     </>

@@ -2,13 +2,10 @@
 
 import { useState } from 'react'
 import type { ControllerConfig } from '@/lib/types'
+import { makeId } from '@/lib/utils'
 
 type Props = {
   onConfirm: (config: ControllerConfig) => void
-}
-
-function makeId() {
-  return Math.random().toString(36).slice(2, 10)
 }
 
 function buildInitialConfig(nPresets: number, nFxPads: number): ControllerConfig {
