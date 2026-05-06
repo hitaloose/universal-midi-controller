@@ -101,11 +101,11 @@ export function TapTempoBlock({
 
       <div className="flex gap-3">
         {/* Subdivision pad */}
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
           <button
             onClick={onCycleSubdivision}
             className={[
-              'flex flex-col items-center justify-center gap-1 rounded-lg p-4 w-36 h-24 text-center transition-colors',
+              'w-full flex flex-col items-center justify-center gap-1 rounded-lg p-4 h-20 sm:h-24 text-center transition-colors',
               isEnabled
                 ? 'bg-indigo-600 text-white'
                 : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700',
@@ -122,12 +122,12 @@ export function TapTempoBlock({
         </div>
 
         {/* Tap pad */}
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
           <button
             ref={tapPadRef}
             onClick={onTap}
             className={[
-              'flex flex-col items-center justify-center gap-1 rounded-lg p-4 w-36 h-24 text-center transition-colors select-none',
+              'w-full flex flex-col items-center justify-center gap-1 rounded-lg p-4 h-20 sm:h-24 text-center transition-colors select-none',
               isEnabled
                 ? 'bg-indigo-600 text-white'
                 : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700',
@@ -153,11 +153,11 @@ export function TapTempoBlock({
         </div>
 
         {/* Off pad */}
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
           <button
             onClick={onDisable}
             className={[
-              'flex flex-col items-center justify-center gap-1 rounded-lg p-4 w-36 h-24 text-center transition-colors',
+              'w-full flex flex-col items-center justify-center gap-1 rounded-lg p-4 h-20 sm:h-24 text-center transition-colors',
               !isEnabled
                 ? 'bg-red-800 text-white'
                 : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700',
