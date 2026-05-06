@@ -161,6 +161,15 @@ export default function Home() {
           Resetar
         </button>
       )}
+      <a
+        href="https://github.com/hitaloose/universal-midi-controller"
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={() => setIsMenuOpen(false)}
+        className="text-xs text-zinc-400 hover:text-white transition-colors text-left py-1"
+      >
+        GitHub
+      </a>
     </>
   )
 
@@ -214,6 +223,14 @@ export default function Home() {
             <button onClick={() => importInputRef.current?.click()} className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
               Importar
             </button>
+            <a
+              href="https://github.com/hitaloose/universal-midi-controller"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
+              GitHub
+            </a>
             {hasConfig && (
               <button onClick={() => updateConfig({ presets: [], fxPads: [] })} className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors">
                 Resetar
