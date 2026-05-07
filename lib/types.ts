@@ -1,6 +1,6 @@
 export type MidiMessageType = 'programChange' | 'controlChange' | 'noteOn' | 'noteOff'
 
-export type PedalboardType = 'outros' | 'pocketMaster'
+export type PedalboardType = 'outros' | 'pocketMaster' | 'valetonGp5'
 
 export type MidiMessage = {
   channel: number

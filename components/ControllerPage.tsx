@@ -231,6 +231,7 @@ export default function ControllerPage() {
           >
             <option value="outros">Outros</option>
             <option value="pocketMaster">Pocket Master</option>
+            <option value="valetonGp5">Valeton GP5</option>
           </select>
           <div className="flex-1 min-w-0">
             <MidiDeviceSelector

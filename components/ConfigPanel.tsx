@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { ControllerConfig, FxPad, MidiMessage, MidiMessageType, PedalboardType, PresetPad } from '@/lib/types'
 import { KeyBindingField } from '@/components/KeyBindingField'
 import { POCKET_MASTER_FX_OPTIONS, POCKET_MASTER_PRESET_CC } from '@/lib/pocketMasterMidi'
+import { VALETON_GP5_FX_OPTIONS, VALETON_GP5_PATCH_CC } from '@/lib/valetonGp5Midi'
 
 type PadRef =
   | { kind: 'preset'; id: string }
@@ -163,6 +164,33 @@ function PresetEditor({
         </fieldset>
       )}
 
+      {pedalboardType === 'valetonGp5' && (
+        <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
+          <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
+            Patch Valeton GP5
+          </legend>
+          <p className="text-[11px] text-zinc-600">0–99 → Patch 00–99</p>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-zinc-500">Número do patch (0–99)</span>
+            <input
+              type="number"
+              min={0}
+              max={99}
+              value={pmPresetNumber}
+              onChange={(e) => {
+                const val = e.target.value === '' ? '' : Number(e.target.value)
+                setPmPresetNumber(val)
+                if (val !== '' && val >= 0 && val <= 99) {
+                  setMidi({ channel: 1, type: 'controlChange', data1: VALETON_GP5_PATCH_CC, data2: val })
+                }
+              }}
+              placeholder="Ex: 5"
+              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+            />
+          </label>
+        </fieldset>
+      )}
+
       <MidiFields label="Comando MIDI" value={midi} onChange={setMidi} />
 
       {fxPads.length > 0 && (
@@ -244,7 +272,7 @@ function FxEditor({
     setKeyBinding(fx.keyBinding)
   }, [fx.id, fx.name, fx.midiOn, fx.midiOff, fx.keyBinding])
 
-  const handlePmFxSelect = (cc: number, label: string) => {
+  const handleFxSelect = (cc: number, label: string) => {
     setMidiOn({ channel: 1, type: 'controlChange', data1: cc, data2: 127 })
     setMidiOff({ channel: 1, type: 'controlChange', data1: cc, data2: 0 })
     const defaultNames = Array.from({ length: 17 }, (_, i) => `FX ${i}`)
@@ -254,6 +282,34 @@ function FxEditor({
   }
 
   const handleSave = () => onSave({ ...fx, name, midiOn, midiOff, keyBinding })
+
+  const fxShortcutSelect = (options: { cc: number; label: string }[], legendLabel: string) => (
+    <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
+      <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
+        {legendLabel}
+      </legend>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs text-zinc-500">FX</span>
+        <select
+          defaultValue=""
+          onChange={(e) => {
+            if (!e.target.value) return
+            const cc = Number(e.target.value)
+            const option = options.find((o) => o.cc === cc)
+            if (option) handleFxSelect(option.cc, option.label)
+          }}
+          className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+        >
+          <option value="">Selecionar FX...</option>
+          {options.map((o) => (
+            <option key={o.cc} value={o.cc}>
+              CC{o.cc} — {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </fieldset>
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -268,33 +324,8 @@ function FxEditor({
 
       <KeyBindingField value={keyBinding} usedKeys={usedKeys} onChange={setKeyBinding} />
 
-      {pedalboardType === 'pocketMaster' && (
-        <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
-          <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
-            Atalho Pocket Master
-          </legend>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-zinc-500">FX</span>
-            <select
-              defaultValue=""
-              onChange={(e) => {
-                if (!e.target.value) return
-                const cc = Number(e.target.value)
-                const option = POCKET_MASTER_FX_OPTIONS.find((o) => o.cc === cc)
-                if (option) handlePmFxSelect(option.cc, option.label)
-              }}
-              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
-            >
-              <option value="">Selecionar FX...</option>
-              {POCKET_MASTER_FX_OPTIONS.map((o) => (
-                <option key={o.cc} value={o.cc}>
-                  CC{o.cc} — {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </fieldset>
-      )}
+      {pedalboardType === 'pocketMaster' && fxShortcutSelect(POCKET_MASTER_FX_OPTIONS, 'Atalho Pocket Master')}
+      {pedalboardType === 'valetonGp5' && fxShortcutSelect(VALETON_GP5_FX_OPTIONS, 'Atalho Valeton GP5')}
 
       <MidiFields label="Comando MIDI ON" value={midiOn} onChange={setMidiOn} />
       <MidiFields label="Comando MIDI OFF" value={midiOff} onChange={setMidiOff} />

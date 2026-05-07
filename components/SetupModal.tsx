@@ -70,6 +70,17 @@ export function SetupModal({ onConfirm }: Props) {
               />
               <span className="text-sm text-zinc-300">Pocket Master</span>
             </label>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="radio"
+                name="pedalboardType"
+                value="valetonGp5"
+                checked={pedalboardType === 'valetonGp5'}
+                onChange={() => setPedalboardType('valetonGp5')}
+                className="accent-indigo-500 w-4 h-4"
+              />
+              <span className="text-sm text-zinc-300">Valeton GP5</span>
+            </label>
           </fieldset>
 
           <label className="flex flex-col gap-1.5">
