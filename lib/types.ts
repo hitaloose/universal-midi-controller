@@ -1,5 +1,7 @@
 export type MidiMessageType = 'programChange' | 'controlChange' | 'noteOn' | 'noteOff'
 
+export type PedalboardType = 'outros' | 'pocketMaster'
+
 export type MidiMessage = {
   channel: number
   type: MidiMessageType
@@ -31,6 +33,7 @@ export type TapTempoBindings = {
 }
 
 export type ControllerConfig = {
+  pedalboardType?: PedalboardType
   presets: PresetPad[]
   fxPads: FxPad[]
   tapTempoBindings?: TapTempoBindings

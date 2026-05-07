@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { ControllerConfig, FxPad, MidiMessage, MidiMessageType, PresetPad } from '@/lib/types'
+import type { ControllerConfig, FxPad, MidiMessage, MidiMessageType, PedalboardType, PresetPad } from '@/lib/types'
 import { KeyBindingField } from '@/components/KeyBindingField'
+import { POCKET_MASTER_FX_OPTIONS, POCKET_MASTER_PRESET_CC } from '@/lib/pocketMasterMidi'
 
 type PadRef =
   | { kind: 'preset'; id: string }
@@ -92,12 +93,14 @@ function PresetEditor({
   preset,
   fxPads,
   usedKeys,
+  pedalboardType,
   onSave,
   onRemove,
 }: {
   preset: PresetPad
   fxPads: FxPad[]
   usedKeys: Set<string>
+  pedalboardType: PedalboardType
   onSave: (p: PresetPad) => void
   onRemove: () => void
 }) {
@@ -106,6 +109,7 @@ function PresetEditor({
   const [fxStates, setFxStates] = useState(preset.fxInitialStates)
   const [fxSoloStates, setFxSoloStates] = useState<Record<string, boolean>>(preset.fxSoloStates ?? {})
   const [keyBinding, setKeyBinding] = useState(preset.keyBinding)
+  const [pmPresetNumber, setPmPresetNumber] = useState<number | ''>('')
 
   useEffect(() => {
     setName(preset.name)
@@ -113,7 +117,15 @@ function PresetEditor({
     setFxStates(preset.fxInitialStates)
     setFxSoloStates(preset.fxSoloStates ?? {})
     setKeyBinding(preset.keyBinding)
+    setPmPresetNumber('')
   }, [preset.id, preset.name, preset.midi, preset.fxInitialStates, preset.fxSoloStates, preset.keyBinding])
+
+  const handlePmPresetChange = (value: number | '') => {
+    setPmPresetNumber(value)
+    if (value !== '' && value >= 1 && value <= 100) {
+      setMidi({ channel: 1, type: 'controlChange', data1: POCKET_MASTER_PRESET_CC, data2: value })
+    }
+  }
 
   const handleSave = () => onSave({ ...preset, name, midi, fxInitialStates: fxStates, fxSoloStates, keyBinding })
 
@@ -129,6 +141,27 @@ function PresetEditor({
       </label>
 
       <KeyBindingField value={keyBinding} usedKeys={usedKeys} onChange={setKeyBinding} />
+
+      {pedalboardType === 'pocketMaster' && (
+        <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
+          <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
+            Preset Pocket Master
+          </legend>
+          <p className="text-[11px] text-zinc-600">1–50 → P01–P50 &nbsp;|&nbsp; 51–100 → F01–F50</p>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-zinc-500">Número do preset (1–100)</span>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={pmPresetNumber}
+              onChange={(e) => handlePmPresetChange(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder="Ex: 5"
+              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+            />
+          </label>
+        </fieldset>
+      )}
 
       <MidiFields label="Comando MIDI" value={midi} onChange={setMidi} />
 
@@ -189,11 +222,13 @@ function PresetEditor({
 function FxEditor({
   fx,
   usedKeys,
+  pedalboardType,
   onSave,
   onRemove,
 }: {
   fx: FxPad
   usedKeys: Set<string>
+  pedalboardType: PedalboardType
   onSave: (f: FxPad) => void
   onRemove: () => void
 }) {
@@ -209,6 +244,15 @@ function FxEditor({
     setKeyBinding(fx.keyBinding)
   }, [fx.id, fx.name, fx.midiOn, fx.midiOff, fx.keyBinding])
 
+  const handlePmFxSelect = (cc: number, label: string) => {
+    setMidiOn({ channel: 1, type: 'controlChange', data1: cc, data2: 127 })
+    setMidiOff({ channel: 1, type: 'controlChange', data1: cc, data2: 0 })
+    const defaultNames = Array.from({ length: 17 }, (_, i) => `FX ${i}`)
+    if (defaultNames.includes(name) || name.trim() === '') {
+      setName(label)
+    }
+  }
+
   const handleSave = () => onSave({ ...fx, name, midiOn, midiOff, keyBinding })
 
   return (
@@ -223,6 +267,34 @@ function FxEditor({
       </label>
 
       <KeyBindingField value={keyBinding} usedKeys={usedKeys} onChange={setKeyBinding} />
+
+      {pedalboardType === 'pocketMaster' && (
+        <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
+          <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
+            Atalho Pocket Master
+          </legend>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-zinc-500">FX</span>
+            <select
+              defaultValue=""
+              onChange={(e) => {
+                if (!e.target.value) return
+                const cc = Number(e.target.value)
+                const option = POCKET_MASTER_FX_OPTIONS.find((o) => o.cc === cc)
+                if (option) handlePmFxSelect(option.cc, option.label)
+              }}
+              className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">Selecionar FX...</option>
+              {POCKET_MASTER_FX_OPTIONS.map((o) => (
+                <option key={o.cc} value={o.cc}>
+                  CC{o.cc} — {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </fieldset>
+      )}
 
       <MidiFields label="Comando MIDI ON" value={midiOn} onChange={setMidiOn} />
       <MidiFields label="Comando MIDI OFF" value={midiOff} onChange={setMidiOff} />
@@ -245,6 +317,8 @@ function FxEditor({
 
 export function ConfigPanel({ padRef, config, onSave, onRemove, onClose }: Props) {
   if (!padRef) return null
+
+  const pedalboardType = config.pedalboardType ?? 'outros'
 
   const handleSavePreset = (updated: PresetPad) => {
     const presets = config.presets.map((p) => (p.id === updated.id ? updated : p))
@@ -298,6 +372,7 @@ export function ConfigPanel({ padRef, config, onSave, onRemove, onClose }: Props
               preset={preset}
               fxPads={config.fxPads}
               usedKeys={presetUsedKeys}
+              pedalboardType={pedalboardType}
               onSave={handleSavePreset}
               onRemove={() => onRemove(preset.id, 'preset')}
             />
@@ -306,6 +381,7 @@ export function ConfigPanel({ padRef, config, onSave, onRemove, onClose }: Props
             <FxEditor
               fx={fx}
               usedKeys={fxUsedKeys}
+              pedalboardType={pedalboardType}
               onSave={handleSaveFx}
               onRemove={() => onRemove(fx.id, 'fx')}
             />

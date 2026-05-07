@@ -13,7 +13,7 @@ import { SetupModal } from '@/components/SetupModal'
 import { TapTempoBlock } from '@/components/TapTempoBlock'
 import { POCKET_MASTER_DELAY_TABLE } from '@/lib/pocketMasterDelayData'
 import { downloadConfig, readConfigFromFile } from '@/lib/storage'
-import type { ControllerConfig, TapTempoBindings } from '@/lib/types'
+import type { ControllerConfig, PedalboardType, TapTempoBindings } from '@/lib/types'
 import { useTapTempo } from '@/hooks/useTapTempo'
 
 type PadRef =
@@ -100,6 +100,12 @@ export default function ControllerPage() {
     updateConfig({ ...config, tapTempoBindings: bindings })
   }
 
+  const isPocketMaster = config.pedalboardType === 'pocketMaster'
+
+  const handlePedalboardTypeChange = (type: PedalboardType) => {
+    updateConfig({ ...config, pedalboardType: type })
+  }
+
   useKeyboardBindings({
     config,
     onPresetPad: handlePresetClick,
@@ -129,6 +135,16 @@ export default function ControllerPage() {
 
   const actionButtons = (
     <>
+      <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Pedaleira</span>
+      <select
+        value={config.pedalboardType ?? 'outros'}
+        onChange={(e) => { handlePedalboardTypeChange(e.target.value as PedalboardType); setIsMenuOpen(false) }}
+        className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500"
+      >
+        <option value="outros">Outros</option>
+        <option value="pocketMaster">Pocket Master</option>
+      </select>
+      <hr className="border-zinc-700 my-1" />
       {hasConfig && (
         <>
           <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Adicionar</span>
@@ -208,6 +224,14 @@ export default function ControllerPage() {
           <h1 className="hidden sm:block text-sm font-bold tracking-widest uppercase text-zinc-400 shrink-0">
             MIDI Controller
           </h1>
+          <select
+            value={config.pedalboardType ?? 'outros'}
+            onChange={(e) => handlePedalboardTypeChange(e.target.value as PedalboardType)}
+            className="hidden sm:block bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-400 focus:outline-none focus:border-indigo-500 shrink-0"
+          >
+            <option value="outros">Outros</option>
+            <option value="pocketMaster">Pocket Master</option>
+          </select>
           <div className="flex-1 min-w-0">
             <MidiDeviceSelector
               outputs={outputs}
@@ -328,20 +352,22 @@ export default function ControllerPage() {
                   ))}
                 </PadGrid>
               )}
-              <TapTempoBlock
-                isEnabled={tapTempo.isEnabled}
-                bpm={tapTempo.bpm}
-                subdivision={tapTempo.subdivision}
-                delayMs={tapTempo.delayMs}
-                closestMs={tapTempo.closestMs}
-                onTap={tapTempo.tap}
-                onCycleSubdivision={tapTempo.cycleSubdivision}
-                onDisable={tapTempo.disable}
-                tapTempoBindings={config.tapTempoBindings ?? {}}
-                onUpdateTapTempoBindings={handleUpdateTapTempoBindings}
-                otherUsedKeys={otherUsedKeys}
-                onConfigOpenChange={setIsTapConfigOpen}
-              />
+              {isPocketMaster && (
+                <TapTempoBlock
+                  isEnabled={tapTempo.isEnabled}
+                  bpm={tapTempo.bpm}
+                  subdivision={tapTempo.subdivision}
+                  delayMs={tapTempo.delayMs}
+                  closestMs={tapTempo.closestMs}
+                  onTap={tapTempo.tap}
+                  onCycleSubdivision={tapTempo.cycleSubdivision}
+                  onDisable={tapTempo.disable}
+                  tapTempoBindings={config.tapTempoBindings ?? {}}
+                  onUpdateTapTempoBindings={handleUpdateTapTempoBindings}
+                  otherUsedKeys={otherUsedKeys}
+                  onConfigOpenChange={setIsTapConfigOpen}
+                />
+              )}
             </div>
 
             {/* Mobile: todas as seções visíveis, colunas limitadas a 4 */}
@@ -373,20 +399,22 @@ export default function ControllerPage() {
                   ))}
                 </PadGrid>
               )}
-              <TapTempoBlock
-                isEnabled={tapTempo.isEnabled}
-                bpm={tapTempo.bpm}
-                subdivision={tapTempo.subdivision}
-                delayMs={tapTempo.delayMs}
-                closestMs={tapTempo.closestMs}
-                onTap={tapTempo.tap}
-                onCycleSubdivision={tapTempo.cycleSubdivision}
-                onDisable={tapTempo.disable}
-                tapTempoBindings={config.tapTempoBindings ?? {}}
-                onUpdateTapTempoBindings={handleUpdateTapTempoBindings}
-                otherUsedKeys={otherUsedKeys}
-                onConfigOpenChange={setIsTapConfigOpen}
-              />
+              {isPocketMaster && (
+                <TapTempoBlock
+                  isEnabled={tapTempo.isEnabled}
+                  bpm={tapTempo.bpm}
+                  subdivision={tapTempo.subdivision}
+                  delayMs={tapTempo.delayMs}
+                  closestMs={tapTempo.closestMs}
+                  onTap={tapTempo.tap}
+                  onCycleSubdivision={tapTempo.cycleSubdivision}
+                  onDisable={tapTempo.disable}
+                  tapTempoBindings={config.tapTempoBindings ?? {}}
+                  onUpdateTapTempoBindings={handleUpdateTapTempoBindings}
+                  otherUsedKeys={otherUsedKeys}
+                  onConfigOpenChange={setIsTapConfigOpen}
+                />
+              )}
             </div>
           </>
         ) : (

@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import type { ControllerConfig } from '@/lib/types'
+import type { ControllerConfig, PedalboardType } from '@/lib/types'
 import { makeId } from '@/lib/utils'
 
 type Props = {
   onConfirm: (config: ControllerConfig) => void
 }
 
-function buildInitialConfig(nPresets: number, nFxPads: number): ControllerConfig {
+function buildInitialConfig(nPresets: number, nFxPads: number, pedalboardType: PedalboardType): ControllerConfig {
   const fxPads = Array.from({ length: nFxPads }, (_, i) => ({
     id: makeId(),
     name: `FX ${i + 1}`,
@@ -24,16 +24,17 @@ function buildInitialConfig(nPresets: number, nFxPads: number): ControllerConfig
     fxSoloStates: Object.fromEntries(fxPads.map((fx) => [fx.id, false])),
   }))
 
-  return { presets, fxPads }
+  return { pedalboardType, presets, fxPads }
 }
 
 export function SetupModal({ onConfirm }: Props) {
   const [nPresets, setNPresets] = useState(4)
   const [nFxPads, setNFxPads] = useState(6)
+  const [pedalboardType, setPedalboardType] = useState<PedalboardType>('outros')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onConfirm(buildInitialConfig(nPresets, nFxPads))
+    onConfirm(buildInitialConfig(nPresets, nFxPads, pedalboardType))
   }
 
   return (
@@ -43,6 +44,34 @@ export function SetupModal({ onConfirm }: Props) {
         <p className="text-sm text-zinc-400 mb-6">Defina quantos pads você quer ter.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-1">
+              Pedaleira
+            </legend>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="radio"
+                name="pedalboardType"
+                value="outros"
+                checked={pedalboardType === 'outros'}
+                onChange={() => setPedalboardType('outros')}
+                className="accent-indigo-500 w-4 h-4"
+              />
+              <span className="text-sm text-zinc-300">Outros</span>
+            </label>
+            <label className="flex items-center gap-2.5 cursor-pointer">
+              <input
+                type="radio"
+                name="pedalboardType"
+                value="pocketMaster"
+                checked={pedalboardType === 'pocketMaster'}
+                onChange={() => setPedalboardType('pocketMaster')}
+                className="accent-indigo-500 w-4 h-4"
+              />
+              <span className="text-sm text-zinc-300">Pocket Master</span>
+            </label>
+          </fieldset>
+
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
               Pads de Preset
