@@ -40,7 +40,6 @@ export default function ControllerPage() {
   const tapTempo = useTapTempo()
   const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
   const [isTapConfigOpen, setIsTapConfigOpen] = useState(false)
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
@@ -143,6 +142,7 @@ export default function ControllerPage() {
       >
         <option value="outros">Outros</option>
         <option value="pocketMaster">Pocket Master</option>
+        <option value="valetonGp5">Valeton GP5</option>
       </select>
       <hr className="border-zinc-700 my-1" />
       {hasConfig && (
@@ -205,22 +205,8 @@ export default function ControllerPage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white flex flex-col">
-      {/* Barra de restauração do header (mobile, quando oculto) */}
-      {!isHeaderVisible && (
-        <div className="sm:hidden h-9 bg-zinc-900 border-b border-zinc-800 flex items-center justify-center shrink-0">
-          <button
-            onClick={() => setIsHeaderVisible(true)}
-            className="text-zinc-500 hover:text-zinc-300 text-xs flex items-center gap-1 transition-colors"
-          >
-            <span>▼</span>
-            <span>mostrar header</span>
-          </button>
-        </div>
-      )}
-
       {/* Header */}
-      {isHeaderVisible && (
-        <header className="border-b border-zinc-800 px-4 sm:px-6 py-3 flex items-center gap-4 sm:gap-6 shrink-0">
+      <header className="border-b border-zinc-800 px-4 sm:px-6 py-3 flex items-center gap-4 sm:gap-6 shrink-0">
           <h1 className="hidden sm:block text-sm font-bold tracking-widest uppercase text-zinc-400 shrink-0">
             MIDI Controller
           </h1>
@@ -290,8 +276,8 @@ export default function ControllerPage() {
             </a>
           </div>
 
-          {/* Mobile: menu ⋮ + ocultar header */}
-          <div className="sm:hidden flex items-center gap-2 shrink-0">
+          {/* Mobile: menu ⋮ */}
+          <div className="sm:hidden flex items-center shrink-0">
             <div className="relative">
               <button
                 onClick={() => setIsMenuOpen((v) => !v)}
@@ -309,16 +295,8 @@ export default function ControllerPage() {
                 </>
               )}
             </div>
-            <button
-              onClick={() => setIsHeaderVisible(false)}
-              className="w-8 h-8 flex items-center justify-center text-zinc-600 hover:text-zinc-400 transition-colors rounded"
-              aria-label="Ocultar header"
-            >
-              ▲
-            </button>
           </div>
         </header>
-      )}
 
       {/* Conteúdo */}
       <div className="flex-1 flex flex-col gap-6 p-4 sm:p-6 max-w-5xl mx-auto w-full">
