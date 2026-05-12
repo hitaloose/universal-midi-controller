@@ -66,7 +66,7 @@ export default function ControllerPage() {
     }
   }
 
-  const MIDI_MSG_DELAY_MS = 20
+  const MIDI_MSG_DELAY_MS = 60
 
   const handlePresetClick = (id: string) => {
     if (soloPresetId === id) {
