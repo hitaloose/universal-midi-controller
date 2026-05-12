@@ -212,13 +212,20 @@ export default function ControllerPage() {
               </button>
             </>
           ) : (
-            <button
-              onClick={() => { bt.connect(); setIsMenuOpen(false) }}
-              disabled={bt.isConnecting}
-              className="text-xs text-zinc-400 hover:text-blue-400 transition-colors text-left py-1 disabled:opacity-40"
-            >
-              {bt.isConnecting ? 'Conectando...' : 'Conectar via BT'}
-            </button>
+            <>
+              <button
+                onClick={() => { bt.connect(); setIsMenuOpen(false) }}
+                disabled={bt.isConnecting}
+                className="text-xs text-zinc-400 hover:text-blue-400 transition-colors text-left py-1 disabled:opacity-40"
+              >
+                {bt.isConnecting ? 'Conectando...' : 'Conectar via BT'}
+              </button>
+              {bt.connectError && (
+                <span className="text-[10px] text-red-400 leading-tight px-1 pb-1">
+                  {bt.connectError}
+                </span>
+              )}
+            </>
           )}
         </>
       )}
@@ -263,27 +270,34 @@ export default function ControllerPage() {
 
           {/* Bluetooth — desktop */}
           {bt.isSupported && (
-            <div className="hidden sm:flex items-center gap-2 shrink-0">
-              {bt.device ? (
-                <>
-                  <span className="text-xs text-blue-400 truncate max-w-[120px]">{bt.device.name}</span>
+            <div className="hidden sm:flex flex-col items-end gap-0.5 shrink-0">
+              <div className="flex items-center gap-2">
+                {bt.device ? (
+                  <>
+                    <span className="text-xs text-blue-400 truncate max-w-[120px]">{bt.device.name}</span>
+                    <button
+                      onClick={bt.disconnect}
+                      className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </>
+                ) : (
                   <button
-                    onClick={bt.disconnect}
-                    className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
+                    onClick={bt.connect}
+                    disabled={bt.isConnecting}
+                    className="text-xs text-zinc-500 hover:text-blue-400 transition-colors disabled:opacity-40"
                   >
-                    ✕
+                    {bt.isConnecting ? 'Conectando...' : '⬡ BT'}
                   </button>
-                </>
-              ) : (
-                <button
-                  onClick={bt.connect}
-                  disabled={bt.isConnecting}
-                  className="text-xs text-zinc-500 hover:text-blue-400 transition-colors disabled:opacity-40"
-                >
-                  {bt.isConnecting ? 'Conectando...' : '⬡ BT'}
-                </button>
+                )}
+                <div className={`w-2 h-2 rounded-full shrink-0 ${bt.device ? 'bg-blue-400' : 'bg-zinc-600'}`} />
+              </div>
+              {bt.connectError && (
+                <span className="text-[10px] text-red-400 max-w-[200px] text-right leading-tight">
+                  {bt.connectError}
+                </span>
               )}
-              <div className={`w-2 h-2 rounded-full shrink-0 ${bt.device ? 'bg-blue-400' : 'bg-zinc-600'}`} />
             </div>
           )}
 

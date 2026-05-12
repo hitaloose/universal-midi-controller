@@ -13,6 +13,7 @@ type UseBluetoothMidiReturn = {
   isSupported: boolean
   device: BluetoothDevice | null
   isConnecting: boolean
+  connectError: string | null
   connect: () => Promise<void>
   disconnect: () => void
   sendMessage: (msg: MidiMessage) => void
@@ -25,6 +26,7 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
   const [characteristic, setCharacteristic] =
     useState<BluetoothRemoteGATTCharacteristic | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [connectError, setConnectError] = useState<string | null>(null)
 
   useEffect(() => {
     setIsSupported(typeof navigator !== 'undefined' && 'bluetooth' in navigator)
@@ -38,21 +40,71 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
   const connect = useCallback(async () => {
     if (!isSupported) return
     setIsConnecting(true)
+    setConnectError(null)
     try {
-      // optionalServices is required even when the service is in filters —
-      // without it Chrome blocks getPrimaryService() on some Android versions.
+      // optionalServices must be listed explicitly — Chrome on Android blocks
+      // getPrimaryService() for services only declared in filters[].services.
       const dev = await navigator.bluetooth.requestDevice({
         filters: [{ services: [BLE_MIDI_SERVICE] }],
         optionalServices: [BLE_MIDI_SERVICE],
       })
+
+      // The Pocket Master (and some other BLE MIDI devices) disconnect immediately
+      // after GATT connect while renegotiating connection parameters, then come back
+      // up. A fixed retry loop misses this window. Instead, we listen to
+      // gattserverdisconnected and reconnect reactively — each disconnect triggers
+      // the next connect() attempt after a short stabilisation delay.
+      const char = await new Promise<BluetoothRemoteGATTCharacteristic>((resolve, reject) => {
+        let attempts = 0
+        const MAX = 6
+        let settled = false
+
+        const cleanup = () => {
+          settled = true
+          dev.removeEventListener('gattserverdisconnected', onDisconnect)
+        }
+
+        const tryConnect = async () => {
+          if (settled) return
+          attempts++
+          try {
+            const server = await dev.gatt!.connect()
+            console.warn(`[BLE MIDI] attempt ${attempts}: connected=${server.connected}`)
+            const service = await server.getPrimaryService(BLE_MIDI_SERVICE)
+            const char = await service.getCharacteristic(BLE_MIDI_CHARACTERISTIC)
+            cleanup()
+            resolve(char)
+          } catch (e) {
+            console.warn(`[BLE MIDI] attempt ${attempts} failed:`, e)
+            if (attempts >= MAX) {
+              cleanup()
+              reject(e)
+            }
+            // gattserverdisconnected fires after getPrimaryService rejects —
+            // onDisconnect will schedule the next attempt.
+          }
+        }
+
+        const onDisconnect = () => {
+          if (!settled) {
+            console.warn('[BLE MIDI] device disconnected mid-connect — retrying in 500ms')
+            setTimeout(tryConnect, 500)
+          }
+        }
+
+        dev.addEventListener('gattserverdisconnected', onDisconnect)
+        tryConnect()
+      })
+
       dev.addEventListener('gattserverdisconnected', handleDisconnected)
-      const server = await dev.gatt!.connect()
-      const service = await server.getPrimaryService(BLE_MIDI_SERVICE)
-      const char = await service.getCharacteristic(BLE_MIDI_CHARACTERISTIC)
       setDevice(dev)
       setCharacteristic(char)
     } catch (err) {
-      console.warn('[BLE MIDI] connect cancelled or failed:', err)
+      const isUserCancel = err instanceof DOMException && err.name === 'NotFoundError'
+      if (!isUserCancel) {
+        setConnectError('Falha ao conectar. Pareie o dispositivo nas configurações de Bluetooth do Android antes de tentar aqui.')
+      }
+      console.warn('[BLE MIDI] connect failed:', err)
     } finally {
       setIsConnecting(false)
     }
@@ -83,5 +135,5 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
     [characteristic],
   )
 
-  return { isSupported, device, isConnecting, connect, disconnect, sendMessage, sendRaw }
+  return { isSupported, device, isConnecting, connectError, connect, disconnect, sendMessage, sendRaw }
 }
