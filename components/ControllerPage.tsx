@@ -66,22 +66,26 @@ export default function ControllerPage() {
     }
   }
 
+  const MIDI_MSG_DELAY_MS = 20
+
   const handlePresetClick = (id: string) => {
     if (soloPresetId === id) {
       const { toActivate, toDeactivate } = exitSoloMode()
-      toActivate.forEach((fxId) => {
+      const msgs = [
+        ...toActivate.map((fxId) => ({ fxId, on: true })),
+        ...toDeactivate.map((fxId) => ({ fxId, on: false })),
+      ]
+      msgs.forEach(({ fxId, on }, i) => {
         const fx = config.fxPads.find((f) => f.id === fxId)
-        if (fx) send(fx.midiOn)
-      })
-      toDeactivate.forEach((fxId) => {
-        const fx = config.fxPads.find((f) => f.id === fxId)
-        if (fx) send(fx.midiOff)
+        if (!fx) return
+        setTimeout(() => send(on ? fx.midiOn : fx.midiOff), i * MIDI_MSG_DELAY_MS)
       })
     } else if (activePresetId === id) {
       const toActivate = enterSoloMode(id)
-      toActivate.forEach((fxId) => {
+      toActivate.forEach((fxId, i) => {
         const fx = config.fxPads.find((f) => f.id === fxId)
-        if (fx) send(fx.midiOn)
+        if (!fx) return
+        setTimeout(() => send(fx.midiOn), i * MIDI_MSG_DELAY_MS)
       })
     } else {
       const preset = config.presets.find((p) => p.id === id)
