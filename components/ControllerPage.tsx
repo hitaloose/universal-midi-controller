@@ -15,6 +15,7 @@ import { POCKET_MASTER_DELAY_TABLE } from '@/lib/pocketMasterDelayData'
 import { downloadConfig, readConfigFromFile } from '@/lib/storage'
 import type { ControllerConfig, PedalboardType, TapTempoBindings } from '@/lib/types'
 import { useTapTempo } from '@/hooks/useTapTempo'
+import { useBluetoothMidi } from '@/hooks/useBluetoothMidi'
 
 type PadRef =
   | { kind: 'preset'; id: string }
@@ -37,7 +38,14 @@ export default function ControllerPage() {
     removeFxPad,
   } = useController()
   const { outputs, selectedOutputId, setSelectedOutputId, sendMessage, sendRaw, error } = useMidi()
+  const bt = useBluetoothMidi()
   const tapTempo = useTapTempo()
+
+  const send = (msg: Parameters<typeof sendMessage>[0]) =>
+    bt.device ? bt.sendMessage(msg) : sendMessage(msg)
+
+  const sendRawData = (bytes: number[]) =>
+    bt.device ? bt.sendRaw(bytes) : sendRaw(bytes)
   const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
   const [isTapConfigOpen, setIsTapConfigOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -63,25 +71,25 @@ export default function ControllerPage() {
       const { toActivate, toDeactivate } = exitSoloMode()
       toActivate.forEach((fxId) => {
         const fx = config.fxPads.find((f) => f.id === fxId)
-        if (fx) sendMessage(fx.midiOn)
+        if (fx) send(fx.midiOn)
       })
       toDeactivate.forEach((fxId) => {
         const fx = config.fxPads.find((f) => f.id === fxId)
-        if (fx) sendMessage(fx.midiOff)
+        if (fx) send(fx.midiOff)
       })
     } else if (activePresetId === id) {
       const toActivate = enterSoloMode(id)
       toActivate.forEach((fxId) => {
         const fx = config.fxPads.find((f) => f.id === fxId)
-        if (fx) sendMessage(fx.midiOn)
+        if (fx) send(fx.midiOn)
       })
     } else {
       const preset = config.presets.find((p) => p.id === id)
-      if (preset) sendMessage(preset.midi)
+      if (preset) send(preset.midi)
       activatePreset(id)
       if (tapTempo.isEnabled && tapTempo.closestMs !== null) {
         const bytes = POCKET_MASTER_DELAY_TABLE[tapTempo.closestMs]
-        if (bytes) sendRaw(bytes)
+        if (bytes) sendRawData(bytes)
       }
     }
   }
@@ -90,7 +98,7 @@ export default function ControllerPage() {
     const fx = config.fxPads.find((f) => f.id === id)
     if (fx) {
       const isCurrentlyOn = fxStates[id] ?? false
-      sendMessage(isCurrentlyOn ? fx.midiOff : fx.midiOn)
+      send(isCurrentlyOn ? fx.midiOff : fx.midiOn)
     }
     toggleFx(id)
   }
@@ -189,6 +197,31 @@ export default function ControllerPage() {
           </button>
         </>
       )}
+      {bt.isSupported && (
+        <>
+          <hr className="border-zinc-700 my-1" />
+          <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Bluetooth</span>
+          {bt.device ? (
+            <>
+              <span className="text-xs text-blue-400 truncate">{bt.device.name}</span>
+              <button
+                onClick={() => { bt.disconnect(); setIsMenuOpen(false) }}
+                className="text-xs text-zinc-500 hover:text-red-400 transition-colors text-left py-1"
+              >
+                Desconectar
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => { bt.connect(); setIsMenuOpen(false) }}
+              disabled={bt.isConnecting}
+              className="text-xs text-zinc-400 hover:text-blue-400 transition-colors text-left py-1 disabled:opacity-40"
+            >
+              {bt.isConnecting ? 'Conectando...' : 'Conectar via BT'}
+            </button>
+          )}
+        </>
+      )}
       <hr className="border-zinc-700 my-1" />
       <a
         href="https://github.com/hitaloose/universal-midi-controller"
@@ -227,6 +260,32 @@ export default function ControllerPage() {
               error={error}
             />
           </div>
+
+          {/* Bluetooth — desktop */}
+          {bt.isSupported && (
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              {bt.device ? (
+                <>
+                  <span className="text-xs text-blue-400 truncate max-w-[120px]">{bt.device.name}</span>
+                  <button
+                    onClick={bt.disconnect}
+                    className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={bt.connect}
+                  disabled={bt.isConnecting}
+                  className="text-xs text-zinc-500 hover:text-blue-400 transition-colors disabled:opacity-40"
+                >
+                  {bt.isConnecting ? 'Conectando...' : '⬡ BT'}
+                </button>
+              )}
+              <div className={`w-2 h-2 rounded-full shrink-0 ${bt.device ? 'bg-blue-400' : 'bg-zinc-600'}`} />
+            </div>
+          )}
 
           {/* Botões de ação — desktop */}
           <div className="hidden sm:flex items-center gap-2 shrink-0">
