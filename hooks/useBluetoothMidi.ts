@@ -39,8 +39,11 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
     if (!isSupported) return
     setIsConnecting(true)
     try {
+      // optionalServices is required even when the service is in filters —
+      // without it Chrome blocks getPrimaryService() on some Android versions.
       const dev = await navigator.bluetooth.requestDevice({
         filters: [{ services: [BLE_MIDI_SERVICE] }],
+        optionalServices: [BLE_MIDI_SERVICE],
       })
       dev.addEventListener('gattserverdisconnected', handleDisconnected)
       const server = await dev.gatt!.connect()
@@ -49,7 +52,6 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
       setDevice(dev)
       setCharacteristic(char)
     } catch (err) {
-      // User cancelled or connection failed — no-op
       console.warn('[BLE MIDI] connect cancelled or failed:', err)
     } finally {
       setIsConnecting(false)
