@@ -15,6 +15,7 @@ function calcDelayMs(bpm: number, subdivision: Subdivision): number {
 }
 
 const MAX_TAPS = 4
+const TAP_TIMEOUT_MS = 3000
 
 type UseTapTempoReturn = {
   isEnabled: boolean
@@ -39,7 +40,7 @@ export function useTapTempo(): UseTapTempoReturn {
   const tap = useCallback(() => {
     const now = Date.now()
     setTapTimes((prev) => {
-      const recent = [...prev, now].slice(-MAX_TAPS)
+      const recent = [...prev.filter((t) => now - t < TAP_TIMEOUT_MS), now].slice(-MAX_TAPS)
       if (recent.length >= 2) {
         const intervals: number[] = []
         for (let i = 1; i < recent.length; i++) {

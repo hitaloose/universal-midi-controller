@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useController } from '@/hooks/useController'
 import { useMidi } from '@/hooks/useMidi'
 import { useKeyboardBindings } from '@/hooks/useKeyboardBindings'
@@ -46,6 +46,31 @@ export default function ControllerPage() {
 
   const sendRawData = (bytes: number[]) =>
     bt.device ? bt.sendRaw(bytes) : sendRaw(bytes)
+
+  const MIDI_MSG_DELAY_MS = 60
+
+
+  // Pocket Master "request current preset state" (command 0201020401).
+  // Sending this puts the device into editor mode, after which it accepts
+  // standalone 0408 parameter-set SysEx without needing a preceding PC message.
+  const PM_REQUEST_PRESET_STATE = [0xF0,0x00,0x09,0x00,0x01,0x00,0x00,0x00,0x02,0x01,0x02,0x04,0x01,0xF7]
+
+  const tapTempoSendRef = useRef<() => void>(() => { })
+  tapTempoSendRef.current = () => {
+    if (!tapTempo.isEnabled || tapTempo.closestMs === null) return
+    const bytes = POCKET_MASTER_DELAY_TABLE[tapTempo.closestMs]
+    if (!bytes) return
+    // Prime the device into editor mode, then send delay time 100ms later
+    sendRawData(PM_REQUEST_PRESET_STATE)
+    setTimeout(() => sendRawData(bytes.slice(2)), 100)
+  }
+
+  useEffect(() => {
+    if (!tapTempo.isEnabled || tapTempo.closestMs === null) return
+    const timer = setTimeout(() => tapTempoSendRef.current(), 500)
+    return () => clearTimeout(timer)
+  }, [tapTempo.isEnabled, tapTempo.closestMs])
+
   const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
   const [isTapConfigOpen, setIsTapConfigOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -65,8 +90,6 @@ export default function ControllerPage() {
       e.target.value = ''
     }
   }
-
-  const MIDI_MSG_DELAY_MS = 60
 
   const handlePresetClick = (id: string) => {
     if (soloPresetId === id) {
@@ -93,7 +116,9 @@ export default function ControllerPage() {
       activatePreset(id)
       if (tapTempo.isEnabled && tapTempo.closestMs !== null) {
         const bytes = POCKET_MASTER_DELAY_TABLE[tapTempo.closestMs]
-        if (bytes) sendRawData(bytes)
+        // Table entries include a 2-byte BLE MIDI framing header from capture; strip it
+        // so both USB (output.send) and BLE (writeBleMidiRaw) receive plain SysEx [0xF0…0xF7]
+        if (bytes) setTimeout(() => sendRawData(bytes.slice(2)), MIDI_MSG_DELAY_MS)
       }
     }
   }
@@ -251,129 +276,129 @@ export default function ControllerPage() {
     <main className="min-h-screen bg-zinc-950 text-white flex flex-col">
       {/* Header */}
       <header className="border-b border-zinc-800 px-4 sm:px-6 py-3 flex items-center gap-4 sm:gap-6 shrink-0">
-          <h1 className="hidden sm:block text-sm font-bold tracking-widest uppercase text-zinc-400 shrink-0">
-            MIDI Controller
-          </h1>
-          <select
-            value={config.pedalboardType ?? 'outros'}
-            onChange={(e) => handlePedalboardTypeChange(e.target.value as PedalboardType)}
-            className="hidden sm:block bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-400 focus:outline-none focus:border-indigo-500 shrink-0"
-          >
-            <option value="outros">Outros</option>
-            <option value="pocketMaster">Pocket Master</option>
-            <option value="valetonGp5">Valeton GP5</option>
-          </select>
-          <div className="flex-1 min-w-0">
-            <MidiDeviceSelector
-              outputs={outputs}
-              selectedOutputId={selectedOutputId}
-              onSelect={setSelectedOutputId}
-              error={error}
-            />
-          </div>
+        <h1 className="hidden sm:block text-sm font-bold tracking-widest uppercase text-zinc-400 shrink-0">
+          MIDI Controller
+        </h1>
+        <select
+          value={config.pedalboardType ?? 'outros'}
+          onChange={(e) => handlePedalboardTypeChange(e.target.value as PedalboardType)}
+          className="hidden sm:block bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-400 focus:outline-none focus:border-indigo-500 shrink-0"
+        >
+          <option value="outros">Outros</option>
+          <option value="pocketMaster">Pocket Master</option>
+          <option value="valetonGp5">Valeton GP5</option>
+        </select>
+        <div className="flex-1 min-w-0">
+          <MidiDeviceSelector
+            outputs={outputs}
+            selectedOutputId={selectedOutputId}
+            onSelect={setSelectedOutputId}
+            error={error}
+          />
+        </div>
 
-          {/* Bluetooth — desktop */}
-          {bt.isSupported && (
-            <div className="hidden sm:flex flex-col items-end gap-0.5 shrink-0">
-              <div className="flex items-center gap-2">
-                {bt.device ? (
-                  <>
-                    <span className="text-xs text-blue-400 truncate max-w-[120px]">{bt.device.name}</span>
-                    <button
-                      onClick={bt.disconnect}
-                      className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
-                    >
-                      ✕
-                    </button>
-                  </>
-                ) : (
+        {/* Bluetooth — desktop */}
+        {bt.isSupported && (
+          <div className="hidden sm:flex flex-col items-end gap-0.5 shrink-0">
+            <div className="flex items-center gap-2">
+              {bt.device ? (
+                <>
+                  <span className="text-xs text-blue-400 truncate max-w-[120px]">{bt.device.name}</span>
                   <button
-                    onClick={bt.connect}
-                    disabled={bt.isConnecting}
-                    className="text-xs text-zinc-500 hover:text-blue-400 transition-colors disabled:opacity-40"
+                    onClick={bt.disconnect}
+                    className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
                   >
-                    {bt.isConnecting ? 'Conectando...' : '⬡ BT'}
+                    ✕
                   </button>
-                )}
-                <div className={`w-2 h-2 rounded-full shrink-0 ${bt.device ? 'bg-blue-400' : 'bg-zinc-600'}`} />
-              </div>
-              {bt.connectError && (
-                <span className="text-[10px] text-red-400 max-w-[200px] text-right leading-tight">
-                  {bt.connectError}
-                </span>
+                </>
+              ) : (
+                <button
+                  onClick={bt.connect}
+                  disabled={bt.isConnecting}
+                  className="text-xs text-zinc-500 hover:text-blue-400 transition-colors disabled:opacity-40"
+                >
+                  {bt.isConnecting ? 'Conectando...' : '⬡ BT'}
+                </button>
               )}
+              <div className={`w-2 h-2 rounded-full shrink-0 ${bt.device ? 'bg-blue-400' : 'bg-zinc-600'}`} />
             </div>
+            {bt.connectError && (
+              <span className="text-[10px] text-red-400 max-w-[200px] text-right leading-tight">
+                {bt.connectError}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Botões de ação — desktop */}
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          {/* Grupo: Adicionar */}
+          {hasConfig && (
+            <>
+              <button onClick={addPreset} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors">
+                + Preset
+              </button>
+              <button onClick={addFxPad} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors">
+                + FX
+              </button>
+              <span className="w-px h-4 bg-zinc-700" />
+            </>
           )}
 
-          {/* Botões de ação — desktop */}
-          <div className="hidden sm:flex items-center gap-2 shrink-0">
-            {/* Grupo: Adicionar */}
-            {hasConfig && (
-              <>
-                <button onClick={addPreset} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors">
-                  + Preset
-                </button>
-                <button onClick={addFxPad} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors">
-                  + FX
-                </button>
-                <span className="w-px h-4 bg-zinc-700" />
-              </>
-            )}
-
-            {/* Grupo: Arquivos */}
-            {hasConfig && (
-              <button onClick={() => downloadConfig(config)} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors">
-                Exportar
-              </button>
-            )}
-            <button onClick={() => importInputRef.current?.click()} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors">
-              Importar
+          {/* Grupo: Arquivos */}
+          {hasConfig && (
+            <button onClick={() => downloadConfig(config)} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors">
+              Exportar
             </button>
+          )}
+          <button onClick={() => importInputRef.current?.click()} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors">
+            Importar
+          </button>
 
-            {/* Grupo: Destrutivo */}
-            {hasConfig && (
+          {/* Grupo: Destrutivo */}
+          {hasConfig && (
+            <>
+              <span className="w-px h-4 bg-zinc-700" />
+              <button onClick={() => updateConfig({ presets: [], fxPads: [] })} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">
+                Resetar
+              </button>
+            </>
+          )}
+
+          {/* GitHub */}
+          <span className="w-px h-4 bg-zinc-700" />
+          <a
+            href="https://github.com/hitaloose/universal-midi-controller"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-zinc-500 hover:text-white transition-colors"
+          >
+            {githubIcon}
+            GitHub
+          </a>
+        </div>
+
+        {/* Mobile: menu ⋮ */}
+        <div className="sm:hidden flex items-center shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => setIsMenuOpen((v) => !v)}
+              className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300 transition-colors rounded"
+              aria-label="Menu"
+            >
+              ⋮
+            </button>
+            {isMenuOpen && (
               <>
-                <span className="w-px h-4 bg-zinc-700" />
-                <button onClick={() => updateConfig({ presets: [], fxPads: [] })} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">
-                  Resetar
-                </button>
+                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                <div className="fixed top-14 right-4 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 flex flex-col p-2 min-w-[120px]">
+                  {actionButtons}
+                </div>
               </>
             )}
-
-            {/* GitHub */}
-            <span className="w-px h-4 bg-zinc-700" />
-            <a
-              href="https://github.com/hitaloose/universal-midi-controller"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-zinc-500 hover:text-white transition-colors"
-            >
-              {githubIcon}
-              GitHub
-            </a>
           </div>
-
-          {/* Mobile: menu ⋮ */}
-          <div className="sm:hidden flex items-center shrink-0">
-            <div className="relative">
-              <button
-                onClick={() => setIsMenuOpen((v) => !v)}
-                className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300 transition-colors rounded"
-                aria-label="Menu"
-              >
-                ⋮
-              </button>
-              {isMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
-                  <div className="fixed top-14 right-4 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 flex flex-col p-2 min-w-[120px]">
-                    {actionButtons}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </header>
+        </div>
+      </header>
 
       {/* Conteúdo */}
       <div className="flex-1 flex flex-col gap-6 p-4 sm:p-6 max-w-5xl mx-auto w-full">

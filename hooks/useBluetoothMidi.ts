@@ -72,6 +72,7 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
             console.warn(`[BLE MIDI] attempt ${attempts}: connected=${server.connected}`)
             const service = await server.getPrimaryService(BLE_MIDI_SERVICE)
             const char = await service.getCharacteristic(BLE_MIDI_CHARACTERISTIC)
+            await char.startNotifications()
             cleanup()
             resolve(char)
           } catch (e) {
