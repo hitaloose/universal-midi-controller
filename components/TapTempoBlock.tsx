@@ -40,9 +40,12 @@ export function TapTempoBlock({
   otherUsedKeys,
   onConfigOpenChange,
 }: Props) {
-  const tapPadRef = useRef<HTMLButtonElement>(null)
+  const circleRef = useRef<HTMLDivElement>(null)
   const blinkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const blinkTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isConfigOpen, setIsConfigOpen] = useState(false)
+
+  const FLASH_DURATION_MS = 80
 
   useEffect(() => {
     onConfigOpenChange(isConfigOpen)
@@ -53,18 +56,32 @@ export function TapTempoBlock({
       clearInterval(blinkIntervalRef.current)
       blinkIntervalRef.current = null
     }
+    if (blinkTimeoutRef.current) {
+      clearTimeout(blinkTimeoutRef.current)
+      blinkTimeoutRef.current = null
+    }
     if (!isEnabled || !bpm) {
-      if (tapPadRef.current) tapPadRef.current.style.opacity = '1'
+      if (circleRef.current) {
+        circleRef.current.style.backgroundColor = 'rgba(255,255,255,0.2)'
+        circleRef.current.style.boxShadow = 'none'
+      }
       return
     }
     const interval = 60000 / bpm
-    let visible = true
     blinkIntervalRef.current = setInterval(() => {
-      visible = !visible
-      if (tapPadRef.current) tapPadRef.current.style.opacity = visible ? '1' : '0.4'
-    }, interval / 2)
+      if (!circleRef.current) return
+      circleRef.current.style.backgroundColor = 'rgb(255,255,255)'
+      circleRef.current.style.boxShadow = '0 0 8px 3px rgba(255,255,255,0.8)'
+      blinkTimeoutRef.current = setTimeout(() => {
+        if (circleRef.current) {
+          circleRef.current.style.backgroundColor = 'rgba(255,255,255,0.2)'
+          circleRef.current.style.boxShadow = 'none'
+        }
+      }, FLASH_DURATION_MS)
+    }, interval)
     return () => {
       if (blinkIntervalRef.current) clearInterval(blinkIntervalRef.current)
+      if (blinkTimeoutRef.current) clearTimeout(blinkTimeoutRef.current)
     }
   }, [isEnabled, bpm])
 
@@ -124,15 +141,19 @@ export function TapTempoBlock({
         {/* Tap pad */}
         <div className="flex-1 flex flex-col items-center gap-1 min-w-0">
           <button
-            ref={tapPadRef}
             onClick={onTap}
             className={[
-              'w-full flex flex-col items-center justify-center gap-1 rounded-lg p-4 h-20 sm:h-24 text-center transition-colors select-none',
+              'relative w-full flex flex-col items-center justify-center gap-1 rounded-lg p-4 h-20 sm:h-24 text-center transition-colors select-none',
               isEnabled
                 ? 'bg-indigo-600 text-white'
                 : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700',
             ].join(' ')}
           >
+            <div
+              ref={circleRef}
+              className="absolute top-2 left-2 w-3 h-3 rounded-full"
+              style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
+            />
             <span className="text-lg font-bold tracking-widest">TAP</span>
             {bpm !== null ? (
               <>

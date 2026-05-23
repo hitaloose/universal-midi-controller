@@ -8,6 +8,7 @@ import {
   writeBleMidi,
   writeBleMidiRaw,
 } from '@/lib/bluetoothMidi'
+import { loadLastBtDeviceName, saveLastBtDeviceName } from '@/lib/storage'
 
 type UseBluetoothMidiReturn = {
   isSupported: boolean
@@ -37,18 +38,8 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
     setCharacteristic(null)
   }, [])
 
-  const connect = useCallback(async () => {
-    if (!isSupported) return
-    setIsConnecting(true)
-    setConnectError(null)
-    try {
-      // optionalServices must be listed explicitly — Chrome on Android blocks
-      // getPrimaryService() for services only declared in filters[].services.
-      const dev = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [BLE_MIDI_SERVICE] }],
-        optionalServices: [BLE_MIDI_SERVICE],
-      })
-
+  const connectToDevice = useCallback(
+    async (dev: BluetoothDevice): Promise<void> => {
       // The Pocket Master (and some other BLE MIDI devices) disconnect immediately
       // after GATT connect while renegotiating connection parameters, then come back
       // up. A fixed retry loop misses this window. Instead, we listen to
@@ -100,6 +91,23 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
       dev.addEventListener('gattserverdisconnected', handleDisconnected)
       setDevice(dev)
       setCharacteristic(char)
+    },
+    [handleDisconnected],
+  )
+
+  const connect = useCallback(async () => {
+    if (!isSupported) return
+    setIsConnecting(true)
+    setConnectError(null)
+    try {
+      // optionalServices must be listed explicitly — Chrome on Android blocks
+      // getPrimaryService() for services only declared in filters[].services.
+      const dev = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [BLE_MIDI_SERVICE] }],
+        optionalServices: [BLE_MIDI_SERVICE],
+      })
+      await connectToDevice(dev)
+      if (dev.name) saveLastBtDeviceName(dev.name)
     } catch (err) {
       const isUserCancel = err instanceof DOMException && err.name === 'NotFoundError'
       if (!isUserCancel) {
@@ -109,7 +117,31 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
     } finally {
       setIsConnecting(false)
     }
-  }, [isSupported, handleDisconnected])
+  }, [isSupported, connectToDevice])
+
+  useEffect(() => {
+    if (!isSupported) return
+    const lastName = loadLastBtDeviceName()
+    if (!lastName) return
+
+    const autoConnect = async () => {
+      try {
+        // getDevices() returns previously-authorized devices without requiring a user gesture
+        const devices = await (navigator.bluetooth as { getDevices?: () => Promise<BluetoothDevice[]> }).getDevices?.()
+        if (!devices) return
+        const match = devices.find((d) => d.name === lastName)
+        if (!match) return
+        console.warn('[BLE MIDI] auto-connecting to last device:', lastName)
+        await connectToDevice(match)
+        saveLastBtDeviceName(lastName)
+      } catch {
+        // auto-connect failures are silent — user can connect manually
+      }
+    }
+
+    autoConnect()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupported])
 
   const disconnect = useCallback(() => {
     device?.gatt?.disconnect()

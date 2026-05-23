@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MidiMessage } from '@/lib/types'
 import { sendMidi, sendSysEx } from '@/lib/midi'
+import { loadLastMidiOutputId, saveLastMidiOutputId } from '@/lib/storage'
 
 type UseMidiReturn = {
   outputs: MIDIOutput[]
@@ -18,6 +19,20 @@ export function useMidi(): UseMidiReturn {
   const [selectedOutputId, setSelectedOutputId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [access, setAccess] = useState<MIDIAccess | null>(null)
+  const lastSavedId = useRef<string | null>(loadLastMidiOutputId())
+
+  useEffect(() => {
+    if (!selectedOutputId) return
+    saveLastMidiOutputId(selectedOutputId)
+    lastSavedId.current = selectedOutputId
+  }, [selectedOutputId])
+
+  useEffect(() => {
+    const saved = lastSavedId.current
+    if (!saved || selectedOutputId) return
+    const match = outputs.find((o) => o.id === saved)
+    if (match) setSelectedOutputId(match.id)
+  }, [outputs, selectedOutputId])
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('requestMIDIAccess' in navigator)) {

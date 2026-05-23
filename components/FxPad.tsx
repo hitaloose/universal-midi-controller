@@ -7,9 +7,10 @@ type Props = {
   isOn: boolean
   onClick: () => void
   onConfigure: () => void
+  displayName?: string
 }
 
-export function FxPad({ pad, isOn, onClick, onConfigure }: Props) {
+export function FxPad({ pad, isOn, onClick, onConfigure, displayName }: Props) {
   return (
     <div className="relative group">
       <button
@@ -25,7 +26,7 @@ export function FxPad({ pad, isOn, onClick, onConfigure }: Props) {
       >
         <div className={`w-3 h-3 rounded-full shadow-sm ${isOn ? 'bg-emerald-400 shadow-emerald-400/80' : 'bg-zinc-600'}`} />
         <span className={`text-sm font-medium text-center px-2 leading-tight ${isOn ? 'text-emerald-300' : 'text-zinc-400'}`}>
-          {pad.name}
+          {displayName || pad.name}
         </span>
         <span className={`text-xs font-bold tracking-widest ${isOn ? 'text-emerald-400' : 'text-zinc-600'}`}>
           {isOn ? 'ON' : 'OFF'}

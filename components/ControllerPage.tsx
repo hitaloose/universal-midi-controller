@@ -152,6 +152,7 @@ export default function ControllerPage() {
     enabled: !isAnyConfigOpen,
   })
 
+  const activePreset = config.presets.find(p => p.id === activePresetId)
   const hasConfig = config.presets.length > 0 || config.fxPads.length > 0
   const presetColumns = Math.min(Math.max(config.presets.length, 1), 8)
   const fxColumns = Math.min(Math.max(config.fxPads.length, 1), 8)
@@ -429,6 +430,7 @@ export default function ControllerPage() {
                       isOn={fxStates[fx.id] ?? false}
                       onClick={() => handleToggleFx(fx.id)}
                       onConfigure={() => setConfiguringPad({ kind: 'fx', id: fx.id })}
+                      displayName={activePreset?.fxAliases?.[fx.id] || undefined}
                     />
                   ))}
                 </PadGrid>
@@ -476,6 +478,7 @@ export default function ControllerPage() {
                       isOn={fxStates[fx.id] ?? false}
                       onClick={() => handleToggleFx(fx.id)}
                       onConfigure={() => setConfiguringPad({ kind: 'fx', id: fx.id })}
+                      displayName={activePreset?.fxAliases?.[fx.id] || undefined}
                     />
                   ))}
                 </PadGrid>

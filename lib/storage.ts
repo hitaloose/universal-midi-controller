@@ -1,6 +1,8 @@
 import type { ControllerConfig } from './types'
 
 const STORAGE_KEY = 'umc-config'
+const MIDI_OUTPUT_KEY = 'umc-last-midi-output'
+const BT_DEVICE_KEY = 'umc-last-bt-device'
 
 export function loadConfig(): ControllerConfig | null {
   if (typeof window === 'undefined') return null
@@ -15,6 +17,26 @@ export function loadConfig(): ControllerConfig | null {
 export function saveConfig(config: ControllerConfig): void {
   if (typeof window === 'undefined') return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+}
+
+export function loadLastMidiOutputId(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(MIDI_OUTPUT_KEY)
+}
+
+export function saveLastMidiOutputId(id: string): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(MIDI_OUTPUT_KEY, id)
+}
+
+export function loadLastBtDeviceName(): string | null {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(BT_DEVICE_KEY)
+}
+
+export function saveLastBtDeviceName(name: string): void {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(BT_DEVICE_KEY, name)
 }
 
 export function downloadConfig(config: ControllerConfig): void {

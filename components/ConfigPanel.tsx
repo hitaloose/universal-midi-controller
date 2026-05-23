@@ -109,6 +109,7 @@ function PresetEditor({
   const [midi, setMidi] = useState(preset.midi)
   const [fxStates, setFxStates] = useState(preset.fxInitialStates)
   const [fxSoloStates, setFxSoloStates] = useState<Record<string, boolean>>(preset.fxSoloStates ?? {})
+  const [fxAliases, setFxAliases] = useState<Record<string, string>>(preset.fxAliases ?? {})
   const [keyBinding, setKeyBinding] = useState(preset.keyBinding)
   const [pmPresetNumber, setPmPresetNumber] = useState<number | ''>('')
 
@@ -117,9 +118,10 @@ function PresetEditor({
     setMidi(preset.midi)
     setFxStates(preset.fxInitialStates)
     setFxSoloStates(preset.fxSoloStates ?? {})
+    setFxAliases(preset.fxAliases ?? {})
     setKeyBinding(preset.keyBinding)
     setPmPresetNumber('')
-  }, [preset.id, preset.name, preset.midi, preset.fxInitialStates, preset.fxSoloStates, preset.keyBinding])
+  }, [preset.id, preset.name, preset.midi, preset.fxInitialStates, preset.fxSoloStates, preset.fxAliases, preset.keyBinding])
 
   const handlePmPresetChange = (value: number | '') => {
     setPmPresetNumber(value)
@@ -128,7 +130,7 @@ function PresetEditor({
     }
   }
 
-  const handleSave = () => onSave({ ...preset, name, midi, fxInitialStates: fxStates, fxSoloStates, keyBinding })
+  const handleSave = () => onSave({ ...preset, name, midi, fxInitialStates: fxStates, fxSoloStates, fxAliases, keyBinding })
 
   return (
     <div className="flex flex-col gap-4">
@@ -225,6 +227,23 @@ function PresetEditor({
                   className="accent-red-500 w-4 h-4"
                 />
                 <span className="text-sm text-zinc-300">{fx.name}</span>
+              </label>
+            ))}
+          </fieldset>
+
+          <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
+            <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
+              Apelidos de FX neste preset
+            </legend>
+            {fxPads.map((fx) => (
+              <label key={fx.id} className="flex flex-col gap-1">
+                <span className="text-xs text-zinc-500">{fx.name}</span>
+                <input
+                  value={fxAliases[fx.id] ?? ''}
+                  onChange={(e) => setFxAliases((prev) => ({ ...prev, [fx.id]: e.target.value }))}
+                  placeholder={fx.name}
+                  className="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+                />
               </label>
             ))}
           </fieldset>

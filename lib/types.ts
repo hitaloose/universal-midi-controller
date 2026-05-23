@@ -23,6 +23,7 @@ export type PresetPad = {
   midi: MidiMessage
   fxInitialStates: Record<string, boolean>
   fxSoloStates: Record<string, boolean>
+  fxAliases?: Record<string, string>
   keyBinding?: string
 }
 
