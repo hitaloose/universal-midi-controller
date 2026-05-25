@@ -74,6 +74,7 @@ export default function ControllerPage() {
   const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
   const [isTapConfigOpen, setIsTapConfigOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
   const isAnyConfigOpen = configuringPad !== null || isTapConfigOpen
@@ -130,6 +131,24 @@ export default function ControllerPage() {
       send(isCurrentlyOn ? fx.midiOff : fx.midiOn)
     }
     toggleFx(id)
+  }
+
+  const movePreset = (id: string, dir: -1 | 1) => {
+    const arr = [...config.presets]
+    const i = arr.findIndex(p => p.id === id)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= arr.length) return
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    updateConfig({ ...config, presets: arr })
+  }
+
+  const moveFxPad = (id: string, dir: -1 | 1) => {
+    const arr = [...config.fxPads]
+    const i = arr.findIndex(f => f.id === id)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= arr.length) return
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    updateConfig({ ...config, fxPads: arr })
   }
 
   const handleUpdateTapTempoBindings = (bindings: TapTempoBindings) => {
@@ -331,6 +350,20 @@ export default function ControllerPage() {
           </div>
         )}
 
+        {/* Botão modo de edição — desktop */}
+        {hasConfig && (
+          <button
+            onClick={() => setIsEditMode(v => !v)}
+            className={`hidden sm:flex items-center justify-center w-7 h-7 rounded transition-colors shrink-0
+              ${isEditMode ? 'text-indigo-400 bg-indigo-950 hover:bg-indigo-900' : 'text-zinc-500 hover:text-zinc-300'}`}
+            title={isEditMode ? 'Sair do modo de edição' : 'Modo de edição'}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
+            </svg>
+          </button>
+        )}
+
         {/* Botões de ação — desktop */}
         <div className="hidden sm:flex items-center gap-2 shrink-0">
           {/* Grupo: Adicionar */}
@@ -379,8 +412,20 @@ export default function ControllerPage() {
           </a>
         </div>
 
-        {/* Mobile: menu ⋮ */}
-        <div className="sm:hidden flex items-center shrink-0">
+        {/* Mobile: botão edição + menu ⋮ */}
+        <div className="sm:hidden flex items-center gap-1 shrink-0">
+          {hasConfig && (
+            <button
+              onClick={() => setIsEditMode(v => !v)}
+              className={`w-8 h-8 flex items-center justify-center rounded transition-colors
+                ${isEditMode ? 'text-indigo-400 bg-indigo-950' : 'text-zinc-500 hover:text-zinc-300'}`}
+              title={isEditMode ? 'Sair do modo de edição' : 'Modo de edição'}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
+              </svg>
+            </button>
+          )}
           <div className="relative">
             <button
               onClick={() => setIsMenuOpen((v) => !v)}
@@ -409,28 +454,34 @@ export default function ControllerPage() {
             <div className="hidden sm:contents">
               {config.presets.length > 0 && (
                 <PadGrid label="Presets" columns={presetColumns}>
-                  {config.presets.map((preset) => (
+                  {config.presets.map((preset, index) => (
                     <PresetPad
                       key={preset.id}
                       pad={preset}
                       isActive={activePresetId === preset.id}
                       isSolo={soloPresetId === preset.id}
+                      isEditMode={isEditMode}
                       onClick={() => handlePresetClick(preset.id)}
                       onConfigure={() => setConfiguringPad({ kind: 'preset', id: preset.id })}
+                      onMoveLeft={index > 0 ? () => movePreset(preset.id, -1) : undefined}
+                      onMoveRight={index < config.presets.length - 1 ? () => movePreset(preset.id, 1) : undefined}
                     />
                   ))}
                 </PadGrid>
               )}
               {config.fxPads.length > 0 && (
                 <PadGrid label="FX" columns={fxColumns}>
-                  {config.fxPads.map((fx) => (
+                  {config.fxPads.map((fx, index) => (
                     <FxPad
                       key={fx.id}
                       pad={fx}
                       isOn={fxStates[fx.id] ?? false}
+                      isEditMode={isEditMode}
                       onClick={() => handleToggleFx(fx.id)}
                       onConfigure={() => setConfiguringPad({ kind: 'fx', id: fx.id })}
                       displayName={activePreset?.fxAliases?.[fx.id] || undefined}
+                      onMoveLeft={index > 0 ? () => moveFxPad(fx.id, -1) : undefined}
+                      onMoveRight={index < config.fxPads.length - 1 ? () => moveFxPad(fx.id, 1) : undefined}
                     />
                   ))}
                 </PadGrid>
@@ -457,28 +508,34 @@ export default function ControllerPage() {
             <div className="sm:hidden flex flex-col gap-6">
               {config.presets.length > 0 && (
                 <PadGrid label="Presets" columns={mobilePresetCols}>
-                  {config.presets.map((preset) => (
+                  {config.presets.map((preset, index) => (
                     <PresetPad
                       key={preset.id}
                       pad={preset}
                       isActive={activePresetId === preset.id}
                       isSolo={soloPresetId === preset.id}
+                      isEditMode={isEditMode}
                       onClick={() => handlePresetClick(preset.id)}
                       onConfigure={() => setConfiguringPad({ kind: 'preset', id: preset.id })}
+                      onMoveLeft={index > 0 ? () => movePreset(preset.id, -1) : undefined}
+                      onMoveRight={index < config.presets.length - 1 ? () => movePreset(preset.id, 1) : undefined}
                     />
                   ))}
                 </PadGrid>
               )}
               {config.fxPads.length > 0 && (
                 <PadGrid label="FX" columns={mobileFxCols}>
-                  {config.fxPads.map((fx) => (
+                  {config.fxPads.map((fx, index) => (
                     <FxPad
                       key={fx.id}
                       pad={fx}
                       isOn={fxStates[fx.id] ?? false}
+                      isEditMode={isEditMode}
                       onClick={() => handleToggleFx(fx.id)}
                       onConfigure={() => setConfiguringPad({ kind: 'fx', id: fx.id })}
                       displayName={activePreset?.fxAliases?.[fx.id] || undefined}
+                      onMoveLeft={index > 0 ? () => moveFxPad(fx.id, -1) : undefined}
+                      onMoveRight={index < config.fxPads.length - 1 ? () => moveFxPad(fx.id, 1) : undefined}
                     />
                   ))}
                 </PadGrid>

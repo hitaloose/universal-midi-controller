@@ -10,7 +10,7 @@ type Props = {
 export function MidiDeviceSelector({ outputs, selectedOutputId, onSelect, error }: Props) {
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500 shrink-0">
+      <span className="hidden sm:inline text-xs font-semibold uppercase tracking-widest text-zinc-500 shrink-0">
         Saída MIDI
       </span>
       {error ? (
