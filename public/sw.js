@@ -1,5 +1,5 @@
-const CACHE_NAME = 'umc-v2'
-const STATIC_CACHE = 'umc-static-v2'
+const CACHE_NAME = 'umc-v3'
+const STATIC_CACHE = 'umc-static-v3'
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
