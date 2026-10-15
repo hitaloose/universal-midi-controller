@@ -267,6 +267,7 @@ export default function ControllerPage() {
               sendNow={send}
               otherUsedKeys={looperOtherUsedKeys}
               isBluetooth={!!output.bt.device}
+              isAndroidUsb={output.connection.kind === 'usb' && /Android/i.test(navigator.userAgent)}
             />
           )}
           {view === 'monitor' && <MonitorView log={output.log} defaultChannel={config.defaultChannel ?? 1} connected={output.connection.kind !== 'none'} onSend={send} />}

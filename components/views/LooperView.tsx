@@ -23,6 +23,7 @@ type Props = {
   sendNow: (msg: MidiMessage, source: string) => void
   otherUsedKeys: Set<string>
   isBluetooth: boolean
+  isAndroidUsb: boolean
 }
 
 type SettingsTab = 'commands' | 'keys' | 'timing'
@@ -136,7 +137,7 @@ function LooperSettingsModal({
   )
 }
 
-export function LooperView({ looper, config, onChange, sendNow, otherUsedKeys, isBluetooth }: Props) {
+export function LooperView({ looper, config, onChange, sendNow, otherUsedKeys, isBluetooth, isAndroidUsb }: Props) {
   const [placement, setPlacement] = useState<'pre' | 'post' | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const beat = useBeat(looper)
@@ -160,6 +161,16 @@ export function LooperView({ looper, config, onChange, sendNow, otherUsedKeys, i
           {isOn ? 'Turn looper off' : 'Turn looper on'}
         </Button>
       </div>
+
+      {isAndroidUsb && config.clickEnabled && (
+        <div className="flex items-start gap-3 rounded-xl border border-preset/35 bg-preset/8 px-3.5 py-3">
+          <WarnIcon size={18} className="text-preset shrink-0 mt-px" />
+          <span className="text-[13px] leading-normal text-warn-ink">
+            On Android, a USB pedal also becomes the audio output, so the click plays through the pedal and can make the
+            tablet stutter. If that happens, turn the click off: the looper keeps time without it.
+          </span>
+        </div>
+      )}
 
       {isBluetooth && (
         <div className="flex items-start gap-3 rounded-xl border border-preset/35 bg-preset/8 px-3.5 py-3">

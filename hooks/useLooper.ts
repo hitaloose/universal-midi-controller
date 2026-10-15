@@ -32,10 +32,13 @@ type Machine = {
   endBeat: number // absolute beat index where the current rec/overdub ends
 }
 
-// Scheduler: wakes every TICK_MS and schedules everything that falls inside LOOKAHEAD_SEC.
+// Scheduler: wakes every TICK_MS and schedules everything that falls inside LOOKAHEAD_MS.
 // The lookahead must be larger than latencyCompMs, so the compensated MIDI time is still in the future.
+// The clock is performance.now(), not the AudioContext: on Android with a USB pedal the audio
+// output is the pedal itself and its timestamps/latency are unreliable, so audio is only used
+// for the click and only while the click is on.
 const TICK_MS = 25
-const LOOKAHEAD_SEC = 0.15
+const LOOKAHEAD_MS = 150
 const MAX_LATENCY_COMP_MS = 100
 const CLICK_LEN_SEC = 0.03
 const TAP_TIMEOUT_MS = 3000
@@ -99,12 +102,24 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
 
   // ---- helpers ---------------------------------------------------------------
 
-  const audioToPerf = (ctx: AudioContext, t: number): number => {
-    const ts = ctx.getOutputTimestamp?.()
-    if (ts && ts.performanceTime && ts.contextTime !== undefined) {
-      return ts.performanceTime + (t - ts.contextTime) * 1000
+  // Must run inside a user gesture (toggle / toggleClick) so the browser lets audio start.
+  const openAudio = () => {
+    if (ctxRef.current) return
+    try {
+      // 'balanced' instead of 'interactive': low-latency USB audio paths on Android stall the device.
+      const ctx = new AudioContext({ latencyHint: 'balanced' })
+      ctxRef.current = ctx
+      ctx.resume().catch(() => {})
+    } catch {
+      ctxRef.current = null
     }
-    return performance.now() + (t - ctx.currentTime + (ctx.outputLatency || 0)) * 1000
+  }
+
+  // Closing (not suspending) hands the audio device back to the system.
+  const closeAudio = () => {
+    const ctx = ctxRef.current
+    ctxRef.current = null
+    ctx?.close().catch(() => {})
   }
 
   const atPerf = (perfTime: number, fn: () => void) => {
@@ -150,9 +165,15 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
     }
   }
 
-  const playClick = (ctx: AudioContext, time: number, accent: boolean) => {
+  /** Schedules the click so it is heard at `perfTime`. Best effort: audio never drives the clock. */
+  const playClick = (perfTime: number, accent: boolean) => {
     const cfg = configRef.current
-    if (!cfg.clickEnabled || cfg.clickVolume <= 0) return
+    const ctx = ctxRef.current
+    if (!ctx || ctx.state !== 'running' || !cfg.clickEnabled || cfg.clickVolume <= 0) return
+    const ahead = (perfTime - performance.now()) / 1000
+    // Beats the tab was too busy to schedule in time are skipped rather than played late in a burst.
+    if (ahead < -0.05) return
+    const time = Math.max(ctx.currentTime, ctx.currentTime + ahead - (ctx.outputLatency || 0))
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.frequency.value = accent ? 1500 : 1000
@@ -203,16 +224,15 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
   }
 
   const schedulerTick = () => {
-    const ctx = ctxRef.current
-    if (!ctx) return
-    while (nextBeatTimeRef.current < ctx.currentTime + LOOKAHEAD_SEC) {
+    const horizon = performance.now() + LOOKAHEAD_MS
+    while (nextBeatTimeRef.current < horizon) {
       const cfg = configRef.current
       const beat = nextBeatIndexRef.current
       const time = nextBeatTimeRef.current
-      playClick(ctx, time, beat % cfg.beatsPerBar === 0)
-      handleBeat(beat, audioToPerf(ctx, time))
+      playClick(time, beat % cfg.beatsPerBar === 0)
+      handleBeat(beat, time)
       nextBeatIndexRef.current = beat + 1
-      nextBeatTimeRef.current = time + beatDurationSec(cfg.bpm, cfg.beatUnit)
+      nextBeatTimeRef.current = time + beatDurationSec(cfg.bpm, cfg.beatUnit) * 1000
     }
   }
 
@@ -221,7 +241,7 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
     tickRef.current = null
     uiTimeoutsRef.current.forEach(clearTimeout)
     uiTimeoutsRef.current.clear()
-    ctxRef.current?.suspend()
+    closeAudio()
   }
 
   // A time-signature change (only allowed without a loop) restarts the bar count on the next beat.
@@ -245,13 +265,11 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
 
   const toggle = useCallback(() => {
     if (machineRef.current.state === 'off') {
-      // Created/resumed inside the user gesture so the browser allows audio.
-      const ctx = ctxRef.current ?? new AudioContext({ latencyHint: 'interactive' })
-      ctxRef.current = ctx
-      ctx.resume()
+      // Audio only when the click is on; opened here, inside the user gesture.
+      if (configRef.current.clickEnabled) openAudio()
       sendImmediate(configRef.current.commands.on)
       nextBeatIndexRef.current = 0
-      nextBeatTimeRef.current = ctx.currentTime + 0.1
+      nextBeatTimeRef.current = performance.now() + 100
       lastSentPerfRef.current = 0
       setMachine({ state: 'empty', anchorBeat: 0, endBeat: 0 })
       tickRef.current = setInterval(schedulerTick, TICK_MS)
@@ -295,7 +313,10 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
 
   const toggleClick = useCallback(() => {
     const cfg = configRef.current
-    onConfigChangeRef.current({ ...cfg, clickEnabled: !cfg.clickEnabled })
+    const clickEnabled = !cfg.clickEnabled
+    if (!clickEnabled) closeAudio()
+    else if (machineRef.current.state !== 'off') openAudio()
+    onConfigChangeRef.current({ ...cfg, clickEnabled })
   }, [])
 
   const tap = useCallback(() => {
