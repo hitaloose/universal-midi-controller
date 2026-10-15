@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { findClosestDelayMs } from '@/lib/pocketMasterDelayData'
+import { computeBpmFromTaps } from '@/lib/utils'
 
 export type Subdivision = 'eighth' | 'dottedEighth' | 'quarter'
 
@@ -41,15 +42,8 @@ export function useTapTempo(): UseTapTempoReturn {
     const now = Date.now()
     setTapTimes((prev) => {
       const recent = [...prev.filter((t) => now - t < TAP_TIMEOUT_MS), now].slice(-MAX_TAPS)
-      if (recent.length >= 2) {
-        const intervals: number[] = []
-        for (let i = 1; i < recent.length; i++) {
-          intervals.push(recent[i] - recent[i - 1])
-        }
-        const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
-        const newBpm = Math.round(60000 / avgInterval)
-        setBpm(Math.max(20, Math.min(300, newBpm)))
-      }
+      const newBpm = computeBpmFromTaps(recent)
+      if (newBpm !== null) setBpm(newBpm)
       return recent
     })
     setIsEnabled(true)

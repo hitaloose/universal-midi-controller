@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { ControllerConfig } from '@/lib/types'
+import type { ControllerConfig, LooperBindings } from '@/lib/types'
 
 type Props = {
   config: ControllerConfig
@@ -8,6 +8,8 @@ type Props = {
   onTap: () => void
   onCycleSubdivision: () => void
   onDisable: () => void
+  looperBindings: LooperBindings
+  looperActions: Record<keyof LooperBindings, () => void>
   enabled: boolean
 }
 
@@ -18,6 +20,8 @@ export function useKeyboardBindings({
   onTap,
   onCycleSubdivision,
   onDisable,
+  looperBindings,
+  looperActions,
   enabled,
 }: Props) {
   useEffect(() => {
@@ -34,6 +38,11 @@ export function useKeyboardBindings({
         .map((f) => [f.keyBinding!, f.id])
     )
     const tap = config.tapTempoBindings
+    const looperMap = new Map(
+      (Object.entries(looperBindings) as [keyof LooperBindings, string | undefined][])
+        .filter(([, code]) => code)
+        .map(([action, code]) => [code!, action])
+    )
 
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -57,10 +66,14 @@ export function useKeyboardBindings({
       } else if (tap?.disable === code) {
         e.preventDefault()
         onDisable()
+      } else if (looperMap.has(code)) {
+        e.preventDefault()
+        // Holding a key must not re-trigger REC/overdub arming.
+        if (!e.repeat) looperActions[looperMap.get(code)!]?.()
       }
     }
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [config, enabled, onPresetPad, onFxPad, onTap, onCycleSubdivision, onDisable])
+  }, [config, enabled, onPresetPad, onFxPad, onTap, onCycleSubdivision, onDisable, looperBindings, looperActions])
 }

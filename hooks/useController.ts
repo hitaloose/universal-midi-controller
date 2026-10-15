@@ -13,6 +13,7 @@ type UseControllerReturn = {
   activatePreset: (id: string) => void
   toggleFx: (id: string) => void
   updateConfig: (config: ControllerConfig) => void
+  patchConfig: (partial: Partial<ControllerConfig>) => void
   enterSoloMode: (id: string) => string[]
   exitSoloMode: () => { toActivate: string[]; toDeactivate: string[] }
   addPreset: () => void
@@ -119,6 +120,15 @@ export function useController(): UseControllerReturn {
     setFxSnapshot(null)
   }, [])
 
+  // Saves settings that don't affect pads (e.g. looper) without resetting preset/FX state.
+  const patchConfig = useCallback((partial: Partial<ControllerConfig>) => {
+    setConfig((prev) => {
+      const next = { ...prev, ...partial }
+      saveConfig(next)
+      return next
+    })
+  }, [])
+
   const addPreset = useCallback(() => {
     setConfig((prev) => {
       const n = prev.presets.length + 1
@@ -202,6 +212,7 @@ export function useController(): UseControllerReturn {
     activatePreset,
     toggleFx,
     updateConfig,
+    patchConfig,
     enterSoloMode,
     exitSoloMode,
     addPreset,

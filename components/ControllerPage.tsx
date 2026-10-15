@@ -11,11 +11,14 @@ import { PadGrid } from '@/components/PadGrid'
 import { PresetPad } from '@/components/PresetPad'
 import { SetupModal } from '@/components/SetupModal'
 import { TapTempoBlock } from '@/components/TapTempoBlock'
+import { LooperBlock } from '@/components/LooperBlock'
 import { POCKET_MASTER_DELAY_TABLE } from '@/lib/pocketMasterDelayData'
 import { downloadConfig, readConfigFromFile } from '@/lib/storage'
-import type { ControllerConfig, PedalboardType, TapTempoBindings } from '@/lib/types'
+import type { ControllerConfig, LooperConfig, MidiMessage, PedalboardType, TapTempoBindings } from '@/lib/types'
 import { useTapTempo } from '@/hooks/useTapTempo'
 import { useBluetoothMidi } from '@/hooks/useBluetoothMidi'
+import { useLooper } from '@/hooks/useLooper'
+import { resolveLooperConfig } from '@/lib/looper'
 
 type PadRef =
   | { kind: 'preset'; id: string }
@@ -30,6 +33,7 @@ export default function ControllerPage() {
     activatePreset,
     toggleFx,
     updateConfig,
+    patchConfig,
     enterSoloMode,
     exitSoloMode,
     addPreset,
@@ -46,6 +50,18 @@ export default function ControllerPage() {
 
   const sendRawData = (bytes: number[]) =>
     bt.device ? bt.sendRaw(bytes) : sendRaw(bytes)
+
+  // USB: Web MIDI schedules the send itself. BLE has no timestamps, so we wait with a timer.
+  const sendAt = (msg: MidiMessage, perfTime: number) => {
+    if (!bt.device) return sendMessage(msg, perfTime)
+    const delay = perfTime - performance.now()
+    if (delay <= 1) bt.sendMessage(msg)
+    else setTimeout(() => bt.sendMessage(msg), delay)
+  }
+
+  const looperConfig = resolveLooperConfig(config.looper)
+  const handleUpdateLooper = (looper: LooperConfig) => patchConfig({ looper })
+  const looper = useLooper({ config: looperConfig, onConfigChange: handleUpdateLooper, sendAt, sendNow: send })
 
   const MIDI_MSG_DELAY_MS = 60
 
@@ -73,11 +89,12 @@ export default function ControllerPage() {
 
   const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
   const [isTapConfigOpen, setIsTapConfigOpen] = useState(false)
+  const [isLooperConfigOpen, setIsLooperConfigOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
-  const isAnyConfigOpen = configuringPad !== null || isTapConfigOpen
+  const isAnyConfigOpen = configuringPad !== null || isTapConfigOpen || isLooperConfigOpen
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -168,6 +185,15 @@ export default function ControllerPage() {
     onTap: tapTempo.tap,
     onCycleSubdivision: tapTempo.cycleSubdivision,
     onDisable: tapTempo.disable,
+    looperBindings: looperConfig.bindings,
+    looperActions: {
+      toggle: looper.toggle,
+      rec: looper.record,
+      playStop: looper.playStop,
+      clear: looper.clear,
+      click: looper.toggleClick,
+      tap: looper.tap,
+    },
     enabled: !isAnyConfigOpen,
   })
 
@@ -178,10 +204,14 @@ export default function ControllerPage() {
   const mobilePresetCols = Math.min(presetColumns, 4)
   const mobileFxCols = Math.min(fxColumns, 4)
 
-  const otherUsedKeys = new Set([
+  const padKeys = [
     ...config.presets.filter((p) => p.keyBinding).map((p) => p.keyBinding!),
     ...config.fxPads.filter((f) => f.keyBinding).map((f) => f.keyBinding!),
-  ])
+  ]
+  const looperKeys = Object.values(looperConfig.bindings).filter(Boolean) as string[]
+  const tapKeys = Object.values(config.tapTempoBindings ?? {}).filter(Boolean) as string[]
+  const otherUsedKeys = new Set([...padKeys, ...looperKeys])
+  const looperOtherUsedKeys = new Set([...padKeys, ...tapKeys])
 
   const githubIcon = (
     <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true" className="shrink-0">
@@ -502,6 +532,15 @@ export default function ControllerPage() {
                   onConfigOpenChange={setIsTapConfigOpen}
                 />
               )}
+              <LooperBlock
+                looper={looper}
+                config={looperConfig}
+                onChange={handleUpdateLooper}
+                sendNow={send}
+                otherUsedKeys={looperOtherUsedKeys}
+                onConfigOpenChange={setIsLooperConfigOpen}
+                isBluetooth={!!bt.device}
+              />
             </div>
 
             {/* Mobile: todas as seções visíveis, colunas limitadas a 4 */}
@@ -556,6 +595,15 @@ export default function ControllerPage() {
                   onConfigOpenChange={setIsTapConfigOpen}
                 />
               )}
+              <LooperBlock
+                looper={looper}
+                config={looperConfig}
+                onChange={handleUpdateLooper}
+                sendNow={send}
+                otherUsedKeys={looperOtherUsedKeys}
+                onConfigOpenChange={setIsLooperConfigOpen}
+                isBluetooth={!!bt.device}
+              />
             </div>
           </>
         ) : (

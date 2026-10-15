@@ -9,7 +9,8 @@ type UseMidiReturn = {
   outputs: MIDIOutput[]
   selectedOutputId: string | null
   setSelectedOutputId: (id: string | null) => void
-  sendMessage: (msg: MidiMessage) => void
+  /** `timestamp` is in performance.now() time; the browser schedules the send. */
+  sendMessage: (msg: MidiMessage, timestamp?: number) => void
   sendRaw: (bytes: number[]) => void
   error: string | null
 }
@@ -56,10 +57,10 @@ export function useMidi(): UseMidiReturn {
   }, [])
 
   const sendMessage = useCallback(
-    (msg: MidiMessage) => {
+    (msg: MidiMessage, timestamp?: number) => {
       if (!access || !selectedOutputId) return
       const output = access.outputs.get(selectedOutputId)
-      if (output) sendMidi(output, msg)
+      if (output) sendMidi(output, msg, timestamp)
     },
     [access, selectedOutputId],
   )

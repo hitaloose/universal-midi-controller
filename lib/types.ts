@@ -38,4 +38,44 @@ export type ControllerConfig = {
   presets: PresetPad[]
   fxPads: FxPad[]
   tapTempoBindings?: TapTempoBindings
+  looper?: LooperConfig
+}
+
+export type LooperCommands = {
+  on: MidiMessage
+  off: MidiMessage
+  recStart: MidiMessage
+  recStop: MidiMessage
+  overdubStart: MidiMessage
+  overdubStop: MidiMessage
+  play: MidiMessage
+  stop: MidiMessage
+  clear: MidiMessage
+  placementPre: MidiMessage
+  placementPost: MidiMessage
+  // data2 comes from the volume slider
+  recVolume: MidiMessage
+  playVolume: MidiMessage
+}
+
+export type LooperBindings = {
+  toggle?: string
+  rec?: string
+  playStop?: string
+  clear?: string
+  click?: string
+  tap?: string
+}
+
+export type LooperConfig = {
+  bpm: number
+  beatsPerBar: number
+  beatUnit: 4 | 8
+  bars: number
+  maxRecSeconds: number
+  clickEnabled: boolean
+  clickVolume: number
+  latencyCompMs: number
+  commands: LooperCommands
+  bindings: LooperBindings
 }
