@@ -9,37 +9,37 @@ import { MidiFields } from '@/components/MidiFields'
 
 const STATE_LABELS: Record<LooperState, string> = {
   off: '',
-  empty: 'Pronto',
-  armedRec: 'REC no próximo 1…',
-  recording: 'Gravando',
-  playing: 'Tocando',
-  armedOverdub: 'Overdub no início do loop…',
+  empty: 'Ready',
+  armedRec: 'REC on next 1…',
+  recording: 'Recording',
+  playing: 'Playing',
+  armedOverdub: 'Overdub at loop start…',
   overdubbing: 'Overdub',
-  stopped: 'Parado',
-  armedPlay: 'Play no próximo 1…',
+  stopped: 'Stopped',
+  armedPlay: 'Play on next 1…',
 }
 
 const COMMAND_LABELS: { key: keyof LooperCommands; label: string }[] = [
   { key: 'on', label: 'Looper ON' },
   { key: 'off', label: 'Looper OFF' },
-  { key: 'recStart', label: 'Iniciar gravação' },
-  { key: 'recStop', label: 'Encerrar gravação' },
-  { key: 'overdubStart', label: 'Iniciar overdub' },
-  { key: 'overdubStop', label: 'Encerrar overdub' },
+  { key: 'recStart', label: 'Start recording' },
+  { key: 'recStop', label: 'Stop recording' },
+  { key: 'overdubStart', label: 'Start overdub' },
+  { key: 'overdubStop', label: 'Stop overdub' },
   { key: 'play', label: 'Play' },
   { key: 'stop', label: 'Stop' },
-  { key: 'clear', label: 'Apagar loop' },
-  { key: 'placementPre', label: 'Posição Pre' },
-  { key: 'placementPost', label: 'Posição Post' },
-  { key: 'recVolume', label: 'Volume de gravação (Data 2 = slider)' },
-  { key: 'playVolume', label: 'Volume de reprodução (Data 2 = slider)' },
+  { key: 'clear', label: 'Clear loop' },
+  { key: 'placementPre', label: 'Pre placement' },
+  { key: 'placementPost', label: 'Post placement' },
+  { key: 'recVolume', label: 'Record volume (Data 2 = slider)' },
+  { key: 'playVolume', label: 'Playback volume (Data 2 = slider)' },
 ]
 
 const BINDING_LABELS: { key: keyof LooperBindings; label: string }[] = [
   { key: 'toggle', label: 'Looper ON/OFF' },
   { key: 'rec', label: 'REC / Overdub' },
   { key: 'playStop', label: 'Play/Stop' },
-  { key: 'clear', label: 'Apagar' },
+  { key: 'clear', label: 'Clear' },
   { key: 'click', label: 'Click on/off' },
   { key: 'tap', label: 'Tap BPM' },
 ]
@@ -67,7 +67,7 @@ function BeatDots({ looper }: { looper: UseLooperReturn }) {
   return (
     <div className="flex items-center gap-3">
       {beat.loopBar !== null && (
-        <span className="text-lg font-bold font-mono tabular-nums text-white" title="Compasso do loop">
+        <span className="text-lg font-bold font-mono tabular-nums text-white" title="Loop bar">
           {beat.loopBar}
           <span className="text-zinc-500">/{beat.bars}</span>
         </span>
@@ -135,7 +135,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
         <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Looper</span>
         <button
           onClick={() => setIsConfigOpen((v) => !v)}
-          title="Configurar looper"
+          title="Configure looper"
           className={[
             'w-5 h-5 flex items-center justify-center rounded transition-colors text-zinc-600 hover:text-zinc-300',
             isConfigOpen ? 'text-indigo-400' : '',
@@ -160,9 +160,9 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
           isBluetooth ? 'text-amber-400' : 'text-zinc-600',
         ].join(' ')}
       >
-        {isBluetooth ? '⚠ Conectado via Bluetooth: ' : 'ⓘ '}
-        o Bluetooth não permite agendar o envio MIDI e pode atrasar alguns ms, desalinhando o loop do click. Para
-        melhor sincronização, use o looper via USB.
+        {isBluetooth ? '⚠ Connected via Bluetooth: ' : 'ⓘ '}
+        Bluetooth can’t schedule MIDI sends and may lag a few ms, pushing the loop out of sync with the click. For
+        tighter sync, use the looper over USB.
       </p>
 
       {isOn && (
@@ -222,7 +222,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
             <div className="flex flex-col items-center gap-1 min-w-0">
               <button onClick={looper.clear} className={padClass(false, false, '')}>
                 <span className="text-lg">✕</span>
-                <span className="text-sm font-bold">APAGAR</span>
+                <span className="text-sm font-bold">CLEAR</span>
               </button>
               <KeyHint code={b.clear} />
             </div>
@@ -255,7 +255,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
               <KeyHint code={b.tap} />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-zinc-500">Compasso</span>
+              <span className="text-xs text-zinc-500">Time signature</span>
               <select
                 value={`${config.beatsPerBar}/${config.beatUnit}`}
                 disabled={isLocked}
@@ -273,7 +273,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
               </select>
             </label>
             <div className="flex flex-col gap-1">
-              <span className="text-xs text-zinc-500">Compassos</span>
+              <span className="text-xs text-zinc-500">Bars</span>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => onChange({ ...config, bars: Math.max(1, config.bars - 1) })}
@@ -311,17 +311,17 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
                 looper.isOverflow ? 'text-red-400' : 'text-zinc-500',
               ].join(' ')}
             >
-              {durationSec.toFixed(1).replace('.', ',')} s / {config.maxRecSeconds} s
+              {durationSec.toFixed(1)} s / {config.maxRecSeconds} s
             </span>
           </div>
 
           {looper.isOverflow && (
             <p className="text-xs text-red-400 bg-red-950/40 border border-red-900 rounded px-2 py-1.5">
-              ⚠ Loop de {durationSec.toFixed(1).replace('.', ',')} s excede o máximo de {config.maxRecSeconds} s da
-              pedaleira.{' '}
+              ⚠ {durationSec.toFixed(1)} s loop exceeds the pedalboard’s {config.maxRecSeconds} s
+              maximum.{' '}
               {maxBars > 0
-                ? `Máximo de ${maxBars} compasso${maxBars > 1 ? 's' : ''} a ${config.bpm} BPM.`
-                : 'Aumente o BPM ou mude o compasso.'}
+                ? `Maximum of ${maxBars} bar${maxBars > 1 ? 's' : ''} at ${config.bpm} BPM.`
+                : 'Increase the BPM or change the time signature.'}
             </p>
           )}
 
@@ -329,7 +329,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
             {(['recVolume', 'playVolume'] as const).map((key) => (
               <label key={key} className="flex flex-col gap-1 flex-1 min-w-[120px]">
                 <span className="text-xs text-zinc-500">
-                  {key === 'recVolume' ? 'Vol. gravação' : 'Vol. reprodução'}: {config.commands[key].data2}
+                  {key === 'recVolume' ? 'Rec vol.' : 'Play vol.'}: {config.commands[key].data2}
                 </span>
                 <input
                   type="range"
@@ -345,7 +345,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
               </label>
             ))}
             <div className="flex flex-col gap-1">
-              <span className="text-xs text-zinc-500">Posição</span>
+              <span className="text-xs text-zinc-500">Placement</span>
               <div className="flex rounded overflow-hidden border border-zinc-700">
                 {(['pre', 'post'] as const).map((p) => (
                   <button
@@ -372,7 +372,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
         <div className="mt-1 flex flex-col gap-4 bg-zinc-900 border border-zinc-700 rounded-lg p-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-zinc-500">Tempo máx. de gravação (s)</span>
+              <span className="text-xs text-zinc-500">Max recording time (s)</span>
               <input
                 type="number"
                 min={1}
@@ -382,7 +382,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-zinc-500">Compensação de latência (ms)</span>
+              <span className="text-xs text-zinc-500">Latency compensation (ms)</span>
               <input
                 type="number"
                 min={0}
@@ -395,7 +395,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs text-zinc-500">Volume do click: {Math.round(config.clickVolume * 100)}%</span>
+              <span className="text-xs text-zinc-500">Click volume: {Math.round(config.clickVolume * 100)}%</span>
               <input
                 type="range"
                 min={0}
@@ -408,7 +408,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
           </div>
 
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Comandos MIDI</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">MIDI commands</p>
             <button
               onClick={() =>
                 onChange({
@@ -419,7 +419,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
               }
               className="text-xs text-zinc-400 hover:text-indigo-400 transition-colors"
             >
-              Restaurar padrão Pocket Master
+              Restore Pocket Master defaults
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -428,7 +428,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
             ))}
           </div>
 
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Teclas do teclado</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Keyboard keys</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {BINDING_LABELS.map(({ key, label }) => (
               <div key={key}>

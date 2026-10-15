@@ -103,7 +103,7 @@ export default function ControllerPage() {
       const imported = await readConfigFromFile(file)
       updateConfig(imported)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao importar configuração')
+      alert(err instanceof Error ? err.message : 'Failed to import configuration')
     } finally {
       e.target.value = ''
     }
@@ -221,20 +221,20 @@ export default function ControllerPage() {
 
   const actionButtons = (
     <>
-      <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Pedaleira</span>
+      <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Pedalboard</span>
       <select
         value={config.pedalboardType ?? 'outros'}
         onChange={(e) => { handlePedalboardTypeChange(e.target.value as PedalboardType); setIsMenuOpen(false) }}
         className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500"
       >
-        <option value="outros">Outros</option>
+        <option value="outros">Other</option>
         <option value="pocketMaster">Pocket Master</option>
         <option value="valetonGp5">Valeton GP5</option>
       </select>
       <hr className="border-zinc-700 my-1" />
       {hasConfig && (
         <>
-          <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Adicionar</span>
+          <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Add</span>
           <button
             onClick={() => { addPreset(); setIsMenuOpen(false) }}
             className="text-xs text-zinc-400 hover:text-emerald-400 transition-colors text-left py-1"
@@ -250,20 +250,20 @@ export default function ControllerPage() {
           <hr className="border-zinc-700 my-1" />
         </>
       )}
-      <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1">Arquivos</span>
+      <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1">Files</span>
       {hasConfig && (
         <button
           onClick={() => { downloadConfig(config); setIsMenuOpen(false) }}
           className="text-xs text-zinc-400 hover:text-indigo-400 transition-colors text-left py-1"
         >
-          Exportar
+          Export
         </button>
       )}
       <button
         onClick={() => { importInputRef.current?.click(); setIsMenuOpen(false) }}
         className="text-xs text-zinc-400 hover:text-indigo-400 transition-colors text-left py-1"
       >
-        Importar
+        Import
       </button>
       {hasConfig && (
         <>
@@ -272,7 +272,7 @@ export default function ControllerPage() {
             onClick={() => { updateConfig({ presets: [], fxPads: [] }); setIsMenuOpen(false) }}
             className="text-xs text-zinc-500 hover:text-red-400 transition-colors text-left py-1"
           >
-            Resetar
+            Reset
           </button>
         </>
       )}
@@ -287,7 +287,7 @@ export default function ControllerPage() {
                 onClick={() => { bt.disconnect(); setIsMenuOpen(false) }}
                 className="text-xs text-zinc-500 hover:text-red-400 transition-colors text-left py-1"
               >
-                Desconectar
+                Disconnect
               </button>
             </>
           ) : (
@@ -297,7 +297,7 @@ export default function ControllerPage() {
                 disabled={bt.isConnecting}
                 className="text-xs text-zinc-400 hover:text-blue-400 transition-colors text-left py-1 disabled:opacity-40"
               >
-                {bt.isConnecting ? 'Conectando...' : 'Conectar via BT'}
+                {bt.isConnecting ? 'Connecting...' : 'Connect via BT'}
               </button>
               {bt.connectError && (
                 <span className="text-[10px] text-red-400 leading-tight px-1 pb-1">
@@ -334,7 +334,7 @@ export default function ControllerPage() {
           onChange={(e) => handlePedalboardTypeChange(e.target.value as PedalboardType)}
           className="hidden sm:block bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-400 focus:outline-none focus:border-indigo-500 shrink-0"
         >
-          <option value="outros">Outros</option>
+          <option value="outros">Other</option>
           <option value="pocketMaster">Pocket Master</option>
           <option value="valetonGp5">Valeton GP5</option>
         </select>
@@ -367,7 +367,7 @@ export default function ControllerPage() {
                   disabled={bt.isConnecting}
                   className="text-xs text-zinc-500 hover:text-blue-400 transition-colors disabled:opacity-40"
                 >
-                  {bt.isConnecting ? 'Conectando...' : '⬡ BT'}
+                  {bt.isConnecting ? 'Connecting...' : '⬡ BT'}
                 </button>
               )}
               <div className={`w-2 h-2 rounded-full shrink-0 ${bt.device ? 'bg-blue-400' : 'bg-zinc-600'}`} />
@@ -380,13 +380,13 @@ export default function ControllerPage() {
           </div>
         )}
 
-        {/* Botão modo de edição — desktop */}
+        {/* Edit mode button — desktop */}
         {hasConfig && (
           <button
             onClick={() => setIsEditMode(v => !v)}
             className={`hidden sm:flex items-center justify-center w-7 h-7 rounded transition-colors shrink-0
               ${isEditMode ? 'text-indigo-400 bg-indigo-950 hover:bg-indigo-900' : 'text-zinc-500 hover:text-zinc-300'}`}
-            title={isEditMode ? 'Sair do modo de edição' : 'Modo de edição'}
+            title={isEditMode ? 'Exit edit mode' : 'Edit mode'}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
@@ -394,9 +394,9 @@ export default function ControllerPage() {
           </button>
         )}
 
-        {/* Botões de ação — desktop */}
+        {/* Action buttons — desktop */}
         <div className="hidden sm:flex items-center gap-2 shrink-0">
-          {/* Grupo: Adicionar */}
+          {/* Group: Add */}
           {hasConfig && (
             <>
               <button onClick={addPreset} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors">
@@ -409,22 +409,22 @@ export default function ControllerPage() {
             </>
           )}
 
-          {/* Grupo: Arquivos */}
+          {/* Group: Files */}
           {hasConfig && (
             <button onClick={() => downloadConfig(config)} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors">
-              Exportar
+              Export
             </button>
           )}
           <button onClick={() => importInputRef.current?.click()} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors">
-            Importar
+            Import
           </button>
 
-          {/* Grupo: Destrutivo */}
+          {/* Group: Destructive */}
           {hasConfig && (
             <>
               <span className="w-px h-4 bg-zinc-700" />
               <button onClick={() => updateConfig({ presets: [], fxPads: [] })} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">
-                Resetar
+                Reset
               </button>
             </>
           )}
@@ -442,14 +442,14 @@ export default function ControllerPage() {
           </a>
         </div>
 
-        {/* Mobile: botão edição + menu ⋮ */}
+        {/* Mobile: edit button + ⋮ menu */}
         <div className="sm:hidden flex items-center gap-1 shrink-0">
           {hasConfig && (
             <button
               onClick={() => setIsEditMode(v => !v)}
               className={`w-8 h-8 flex items-center justify-center rounded transition-colors
                 ${isEditMode ? 'text-indigo-400 bg-indigo-950' : 'text-zinc-500 hover:text-zinc-300'}`}
-              title={isEditMode ? 'Sair do modo de edição' : 'Modo de edição'}
+              title={isEditMode ? 'Exit edit mode' : 'Edit mode'}
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
@@ -476,11 +476,11 @@ export default function ControllerPage() {
         </div>
       </header>
 
-      {/* Conteúdo */}
+      {/* Content */}
       <div className="flex-1 flex flex-col gap-6 p-4 sm:p-6 max-w-5xl mx-auto w-full">
         {hasConfig ? (
           <>
-            {/* Desktop: colunas originais (até 8) */}
+            {/* Desktop: original columns (up to 8) */}
             <div className="hidden sm:contents">
               {config.presets.length > 0 && (
                 <PadGrid label="Presets" columns={presetColumns}>
@@ -543,7 +543,7 @@ export default function ControllerPage() {
               />
             </div>
 
-            {/* Mobile: todas as seções visíveis, colunas limitadas a 4 */}
+            {/* Mobile: all sections visible, columns capped at 4 */}
             <div className="sm:hidden flex flex-col gap-6">
               {config.presets.length > 0 && (
                 <PadGrid label="Presets" columns={mobilePresetCols}>
@@ -608,7 +608,7 @@ export default function ControllerPage() {
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-zinc-700 text-sm">
-            Configure o controller para começar.
+            Set up the controller to get started.
           </div>
         )}
       </div>

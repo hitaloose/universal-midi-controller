@@ -40,13 +40,13 @@ export function SetupModal({ onConfirm }: Props) {
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-8 w-full max-w-sm shadow-2xl">
-        <h1 className="text-xl font-bold text-white mb-1">Configuração inicial</h1>
-        <p className="text-sm text-zinc-400 mb-6">Defina quantos pads você quer ter.</p>
+        <h1 className="text-xl font-bold text-white mb-1">Initial setup</h1>
+        <p className="text-sm text-zinc-400 mb-6">Choose how many pads you want.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <fieldset className="flex flex-col gap-2">
             <legend className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-1">
-              Pedaleira
+              Pedalboard
             </legend>
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input
@@ -57,7 +57,7 @@ export function SetupModal({ onConfirm }: Props) {
                 onChange={() => setPedalboardType('outros')}
                 className="accent-indigo-500 w-4 h-4"
               />
-              <span className="text-sm text-zinc-300">Outros</span>
+              <span className="text-sm text-zinc-300">Other</span>
             </label>
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input
@@ -85,7 +85,7 @@ export function SetupModal({ onConfirm }: Props) {
 
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-              Pads de Preset
+              Preset pads
             </span>
             <input
               type="number"
@@ -100,7 +100,7 @@ export function SetupModal({ onConfirm }: Props) {
 
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
-              Pads de FX
+              FX pads
             </span>
             <input
               type="number"
@@ -118,7 +118,7 @@ export function SetupModal({ onConfirm }: Props) {
             className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold
               rounded-lg py-2.5 transition-colors"
           >
-            Criar Controller
+            Create controller
           </button>
         </form>
       </div>

@@ -11,7 +11,7 @@ export function MidiDeviceSelector({ outputs, selectedOutputId, onSelect, error 
   return (
     <div className="flex items-center gap-3">
       <span className="hidden sm:inline text-xs font-semibold uppercase tracking-widest text-zinc-500 shrink-0">
-        Saída MIDI
+        MIDI output
       </span>
       {error ? (
         <span className="text-xs text-red-400">{error}</span>
@@ -22,7 +22,7 @@ export function MidiDeviceSelector({ outputs, selectedOutputId, onSelect, error 
           className="flex-1 max-w-xs bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5
             text-sm text-zinc-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
         >
-          <option value="">— Nenhum dispositivo —</option>
+          <option value="">— No device —</option>
           {outputs.map((out) => (
             <option key={out.id} value={out.id}>
               {out.name}

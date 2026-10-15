@@ -111,7 +111,7 @@ export function useBluetoothMidi(): UseBluetoothMidiReturn {
     } catch (err) {
       const isUserCancel = err instanceof DOMException && err.name === 'NotFoundError'
       if (!isUserCancel) {
-        setConnectError('Falha ao conectar. Pareie o dispositivo nas configurações de Bluetooth do Android antes de tentar aqui.')
+        setConnectError('Connection failed. Pair the device in Android Bluetooth settings before trying here.')
       }
       console.warn('[BLE MIDI] connect failed:', err)
     } finally {

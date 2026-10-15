@@ -1,5 +1,5 @@
-const CACHE_NAME = 'umc-v4'
-const STATIC_CACHE = 'umc-static-v4'
+const CACHE_NAME = 'umc-v5'
+const STATIC_CACHE = 'umc-static-v5'
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -25,7 +25,7 @@ self.addEventListener('fetch', (e) => {
   const { request } = e
   const url = new URL(request.url)
 
-  // Assets estáticos do Next.js → Cache-First
+  // Next.js static assets → Cache-First
   if (
     url.pathname.startsWith('/universal-midi-controller/_next/static/') ||
     url.pathname.startsWith('/universal-midi-controller/static/')
@@ -44,7 +44,7 @@ self.addEventListener('fetch', (e) => {
     return
   }
 
-  // Navegação (HTML) → Network-First com fallback offline
+  // Navigation (HTML) → Network-First with offline fallback
   if (request.mode === 'navigate') {
     e.respondWith(
       fetch(request)

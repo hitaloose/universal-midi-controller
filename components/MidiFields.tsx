@@ -23,7 +23,7 @@ export function MidiFields({
       </legend>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-zinc-500">Canal</span>
+          <span className="text-xs text-zinc-500">Channel</span>
           <input
             type="number"
             min={1}
@@ -34,7 +34,7 @@ export function MidiFields({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-zinc-500">Tipo</span>
+          <span className="text-xs text-zinc-500">Type</span>
           <select
             value={value.type}
             onChange={(e) => onChange({ ...value, type: e.target.value as MidiMessageType })}

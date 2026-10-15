@@ -39,7 +39,7 @@ export function PresetPad({ pad, isActive, isSolo, isEditMode, onClick, onConfig
         className={`absolute top-1 right-1 w-6 h-6 rounded flex items-center justify-center
           bg-zinc-700 hover:bg-zinc-600 text-zinc-400 hover:text-white
           ${isEditMode ? 'opacity-100' : 'hidden'}`}
-        title="Configurar"
+        title="Configure"
       >
         <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
           <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
@@ -51,7 +51,7 @@ export function PresetPad({ pad, isActive, isSolo, isEditMode, onClick, onConfig
           onClick={(e) => { e.stopPropagation(); onMoveLeft() }}
           className="absolute bottom-1 left-1 w-6 h-6 rounded flex items-center justify-center
             bg-zinc-700 hover:bg-zinc-600 text-zinc-400 hover:text-white"
-          title="Mover para esquerda"
+          title="Move left"
         >
           <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
             <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
@@ -63,7 +63,7 @@ export function PresetPad({ pad, isActive, isSolo, isEditMode, onClick, onConfig
           onClick={(e) => { e.stopPropagation(); onMoveRight() }}
           className="absolute bottom-1 right-1 w-6 h-6 rounded flex items-center justify-center
             bg-zinc-700 hover:bg-zinc-600 text-zinc-400 hover:text-white"
-          title="Mover para direita"
+          title="Move right"
         >
           <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
             <path d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>

@@ -6,9 +6,9 @@ import type { TapTempoBindings } from '@/lib/types'
 import { KeyBindingField, formatKeyCode } from '@/components/KeyBindingField'
 
 const SUBDIVISION_LABELS: Record<Subdivision, string> = {
-  eighth: '♪ Colcheia',
-  dottedEighth: '♪. Col. Pont.',
-  quarter: '♩ Semínima',
+  eighth: '♪ Eighth',
+  dottedEighth: '♪. Dotted 8th',
+  quarter: '♩ Quarter',
 }
 
 type Props = {
@@ -106,7 +106,7 @@ export function TapTempoBlock({
         </span>
         <button
           onClick={() => setIsConfigOpen((v) => !v)}
-          title="Configurar teclas"
+          title="Configure keys"
           className={[
             'w-5 h-5 flex items-center justify-center rounded transition-colors text-zinc-600 hover:text-zinc-300',
             isConfigOpen ? 'text-indigo-400' : '',
@@ -129,7 +129,7 @@ export function TapTempoBlock({
             ].join(' ')}
           >
             <span className="text-base font-bold">{SUBDIVISION_LABELS[subdivision]}</span>
-            <span className="text-xs opacity-60">subdivisão</span>
+            <span className="text-xs opacity-60">subdivision</span>
           </button>
           {tapTempoBindings.cycleSubdivision && (
             <span className="text-xs font-mono text-zinc-500">
@@ -163,7 +163,7 @@ export function TapTempoBlock({
                 </span>
               </>
             ) : (
-              <span className="text-xs opacity-50">toque para começar</span>
+              <span className="text-xs opacity-50">tap to start</span>
             )}
           </button>
           {tapTempoBindings.tap && (
@@ -198,11 +198,11 @@ export function TapTempoBlock({
       {isConfigOpen && (
         <div className="mt-1 flex flex-col gap-3 bg-zinc-900 border border-zinc-700 rounded-lg p-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            Teclas do teclado
+            Keyboard keys
           </p>
           <div className="flex flex-col gap-4">
             <div>
-              <p className="text-xs text-zinc-400 mb-1.5">Subdivisão</p>
+              <p className="text-xs text-zinc-400 mb-1.5">Subdivision</p>
               <KeyBindingField
                 value={tapTempoBindings.cycleSubdivision}
                 usedKeys={subdivUsedKeys}

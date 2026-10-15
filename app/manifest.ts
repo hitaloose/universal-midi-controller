@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'MIDI Controller',
     short_name: 'MIDI Ctrl',
-    description: 'Controlador MIDI universal para pedaleiras',
+    description: 'Universal MIDI controller for pedalboards',
     start_url: '/universal-midi-controller/',
     display: 'standalone',
     background_color: '#0a0a0a',

@@ -37,7 +37,7 @@ export function useMidi(): UseMidiReturn {
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('requestMIDIAccess' in navigator)) {
-      setError('Web MIDI API não suportada neste navegador.')
+      setError('Web MIDI API is not supported in this browser.')
       return
     }
 
@@ -51,7 +51,7 @@ export function useMidi(): UseMidiReturn {
         midiAccess.onstatechange = refreshOutputs
       },
       () => {
-        setError('Permissão de acesso MIDI negada.')
+        setError('MIDI access permission denied.')
       },
     )
   }, [])

@@ -64,7 +64,7 @@ function PresetEditor({
   return (
     <div className="flex flex-col gap-4">
       <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Nome</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Name</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -81,14 +81,14 @@ function PresetEditor({
           </legend>
           <p className="text-[11px] text-zinc-600">1–50 → P01–P50 &nbsp;|&nbsp; 51–100 → F01–F50</p>
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-zinc-500">Número do preset (1–100)</span>
+            <span className="text-xs text-zinc-500">Preset number (1–100)</span>
             <input
               type="number"
               min={1}
               max={100}
               value={pmPresetNumber}
               onChange={(e) => handlePmPresetChange(e.target.value === '' ? '' : Number(e.target.value))}
-              placeholder="Ex: 5"
+              placeholder="e.g. 5"
               className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
             />
           </label>
@@ -102,7 +102,7 @@ function PresetEditor({
           </legend>
           <p className="text-[11px] text-zinc-600">0–99 → Patch 00–99</p>
           <label className="flex flex-col gap-1">
-            <span className="text-xs text-zinc-500">Número do patch (0–99)</span>
+            <span className="text-xs text-zinc-500">Patch number (0–99)</span>
             <input
               type="number"
               min={0}
@@ -115,20 +115,20 @@ function PresetEditor({
                   setMidi({ channel: 1, type: 'controlChange', data1: VALETON_GP5_PATCH_CC, data2: val })
                 }
               }}
-              placeholder="Ex: 5"
+              placeholder="e.g. 5"
               className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
             />
           </label>
         </fieldset>
       )}
 
-      <MidiFields label="Comando MIDI" value={midi} onChange={setMidi} />
+      <MidiFields label="MIDI command" value={midi} onChange={setMidi} />
 
       {fxPads.length > 0 && (
         <>
           <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
             <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
-              Estado inicial dos FX
+              Initial FX state
             </legend>
             {fxPads.map((fx) => (
               <label key={fx.id} className="flex items-center gap-2 cursor-pointer">
@@ -145,7 +145,7 @@ function PresetEditor({
 
           <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
             <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
-              FX no modo solo
+              FX in solo mode
             </legend>
             {fxPads.map((fx) => (
               <label key={fx.id} className="flex items-center gap-2 cursor-pointer">
@@ -162,7 +162,7 @@ function PresetEditor({
 
           <fieldset className="flex flex-col gap-2 border border-zinc-700 rounded-lg p-3">
             <legend className="text-xs font-semibold uppercase tracking-wider text-zinc-500 px-1">
-              Apelidos de FX neste preset
+              FX aliases for this preset
             </legend>
             {fxPads.map((fx) => (
               <label key={fx.id} className="flex flex-col gap-1">
@@ -183,13 +183,13 @@ function PresetEditor({
         onClick={handleSave}
         className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg py-2 transition-colors text-sm"
       >
-        Salvar
+        Save
       </button>
       <button
         onClick={onRemove}
         className="text-xs text-zinc-600 hover:text-red-400 transition-colors text-center"
       >
-        Remover preset
+        Remove preset
       </button>
     </div>
   )
@@ -248,7 +248,7 @@ function FxEditor({
           }}
           className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-indigo-500"
         >
-          <option value="">Selecionar FX...</option>
+          <option value="">Select FX...</option>
           {options.map((o) => (
             <option key={o.cc} value={o.cc}>
               CC{o.cc} — {o.label}
@@ -262,7 +262,7 @@ function FxEditor({
   return (
     <div className="flex flex-col gap-4">
       <label className="flex flex-col gap-1.5">
-        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Nome</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Name</span>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -272,23 +272,23 @@ function FxEditor({
 
       <KeyBindingField value={keyBinding} usedKeys={usedKeys} onChange={setKeyBinding} />
 
-      {pedalboardType === 'pocketMaster' && fxShortcutSelect(POCKET_MASTER_FX_OPTIONS, 'Atalho Pocket Master')}
-      {pedalboardType === 'valetonGp5' && fxShortcutSelect(VALETON_GP5_FX_OPTIONS, 'Atalho Valeton GP5')}
+      {pedalboardType === 'pocketMaster' && fxShortcutSelect(POCKET_MASTER_FX_OPTIONS, 'Pocket Master shortcut')}
+      {pedalboardType === 'valetonGp5' && fxShortcutSelect(VALETON_GP5_FX_OPTIONS, 'Valeton GP5 shortcut')}
 
-      <MidiFields label="Comando MIDI ON" value={midiOn} onChange={setMidiOn} />
-      <MidiFields label="Comando MIDI OFF" value={midiOff} onChange={setMidiOff} />
+      <MidiFields label="MIDI command ON" value={midiOn} onChange={setMidiOn} />
+      <MidiFields label="MIDI command OFF" value={midiOff} onChange={setMidiOff} />
 
       <button
         onClick={handleSave}
         className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg py-2 transition-colors text-sm"
       >
-        Salvar
+        Save
       </button>
       <button
         onClick={onRemove}
         className="text-xs text-zinc-600 hover:text-red-400 transition-colors text-center"
       >
-        Remover FX
+        Remove FX
       </button>
     </div>
   )
@@ -336,7 +336,7 @@ export function ConfigPanel({ padRef, config, onSave, onRemove, onClose }: Props
       <aside className="fixed right-0 top-0 h-full w-80 bg-zinc-900 border-l border-zinc-700 z-50 flex flex-col shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700">
           <h2 className="text-sm font-semibold text-white">
-            {padRef.kind === 'preset' ? 'Configurar Preset' : 'Configurar FX'}
+            {padRef.kind === 'preset' ? 'Configure Preset' : 'Configure FX'}
           </h2>
           <button
             onClick={onClose}

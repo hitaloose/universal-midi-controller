@@ -56,15 +56,15 @@ export function readConfigFromFile(file: File): Promise<ControllerConfig> {
       try {
         const parsed = JSON.parse(e.target?.result as string)
         if (!Array.isArray(parsed.presets) || !Array.isArray(parsed.fxPads)) {
-          reject(new Error('Arquivo inválido: estrutura incorreta'))
+          reject(new Error('Invalid file: incorrect structure'))
           return
         }
         resolve(parsed as ControllerConfig)
       } catch {
-        reject(new Error('Arquivo inválido: JSON malformado'))
+        reject(new Error('Invalid file: malformed JSON'))
       }
     }
-    reader.onerror = () => reject(new Error('Erro ao ler o arquivo'))
+    reader.onerror = () => reject(new Error('Failed to read file'))
     reader.readAsText(file)
   })
 }
