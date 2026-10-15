@@ -26,6 +26,7 @@ type UseTapTempoReturn = {
   closestMs: number | null
   tap: () => void
   cycleSubdivision: () => void
+  setSubdivision: (s: Subdivision) => void
   disable: () => void
 }
 
@@ -62,5 +63,5 @@ export function useTapTempo(): UseTapTempoReturn {
     setTapTimes([])
   }, [])
 
-  return { isEnabled, bpm, subdivision, delayMs, closestMs, tap, cycleSubdivision, disable }
+  return { isEnabled, bpm, subdivision, delayMs, closestMs, tap, cycleSubdivision, setSubdivision, disable }
 }

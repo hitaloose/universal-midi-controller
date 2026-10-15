@@ -1,76 +1,38 @@
 'use client'
 
 import type { FxPad as FxPadType } from '@/lib/types'
+import { KeyCap } from '@/components/ui/KeyCap'
 
 type Props = {
   pad: FxPadType
   isOn: boolean
-  isEditMode: boolean
   onClick: () => void
-  onConfigure: () => void
   displayName?: string
-  onMoveLeft?: () => void
-  onMoveRight?: () => void
 }
 
-export function FxPad({ pad, isOn, isEditMode, onClick, onConfigure, displayName, onMoveLeft, onMoveRight }: Props) {
+export function FxPad({ pad, isOn, onClick, displayName }: Props) {
   return (
-    <div className="relative group">
-      <button
-        onClick={onClick}
-        className={`
-          w-full aspect-square rounded-xl flex flex-col items-center justify-center gap-2
-          border-2 transition-all duration-150 select-none
-          ${isOn
-            ? 'bg-emerald-900 border-emerald-600 shadow-lg shadow-emerald-900/50'
-            : 'bg-zinc-800 border-zinc-700 hover:border-zinc-500 hover:bg-zinc-700'
-          }
-        `}
-      >
-        <div className={`w-3 h-3 rounded-full shadow-sm ${isOn ? 'bg-emerald-400 shadow-emerald-400/80' : 'bg-zinc-600'}`} />
-        <span className={`text-sm font-medium text-center px-2 leading-tight ${isOn ? 'text-emerald-300' : 'text-zinc-400'}`}>
-          {displayName || pad.name}
-        </span>
-        <span className={`text-xs font-bold tracking-widest ${isOn ? 'text-emerald-400' : 'text-zinc-600'}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={isOn}
+      className={`box-border flex flex-col justify-between items-start text-left min-h-[76px] sm:min-h-[104px] px-3.5 py-3 rounded-[14px] border cursor-pointer select-none transition-colors ${
+        isOn ? 'bg-fx-deep border-fx-line text-fx-ink' : 'bg-surface border-line-soft text-ink hover:bg-surface-2'
+      }`}
+    >
+      <span className="flex w-full items-center justify-between gap-2">
+        <KeyCap code={pad.keyBinding} tone={isOn ? 'onMint' : 'idle'} />
+        <span
+          aria-hidden="true"
+          className={`ml-auto w-2.5 h-2.5 rounded-full ${isOn ? 'bg-fx shadow-[0_0_10px_2px_rgba(61,220,151,0.55)]' : 'bg-line'}`}
+        />
+      </span>
+      <span className="flex w-full items-end justify-between gap-2">
+        <span className="text-base sm:text-[17px] font-bold leading-tight break-words">{displayName || pad.name}</span>
+        <span className={`font-mono text-xs font-bold tracking-[0.1em] ${isOn ? 'text-fx' : 'text-ink-mute'}`}>
           {isOn ? 'ON' : 'OFF'}
         </span>
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); onConfigure() }}
-        className={`absolute top-1 right-1 w-6 h-6 rounded flex items-center justify-center
-          bg-zinc-700 hover:bg-zinc-600 text-zinc-400 hover:text-white
-          ${isEditMode ? 'opacity-100' : 'hidden'}`}
-        title="Configure"
-      >
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-          <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.474l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
-        </svg>
-      </button>
-      {isEditMode && onMoveLeft && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onMoveLeft() }}
-          className="absolute bottom-1 left-1 w-6 h-6 rounded flex items-center justify-center
-            bg-zinc-700 hover:bg-zinc-600 text-zinc-400 hover:text-white"
-          title="Move left"
-        >
-          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
-          </svg>
-        </button>
-      )}
-      {isEditMode && onMoveRight && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onMoveRight() }}
-          className="absolute bottom-1 right-1 w-6 h-6 rounded flex items-center justify-center
-            bg-zinc-700 hover:bg-zinc-600 text-zinc-400 hover:text-white"
-          title="Move right"
-        >
-          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
-          </svg>
-        </button>
-      )}
-    </div>
+      </span>
+    </button>
   )
 }

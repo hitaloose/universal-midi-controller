@@ -26,3 +26,14 @@ export function sendSysEx(output: MIDIOutput, bytes: number[]): void {
   )
   output.send(bytes)
 }
+
+const ALL_NOTES_OFF = 123
+const ALL_SOUND_OFF = 120
+
+/** All Notes Off + All Sound Off on every channel. */
+export function buildPanicMessages(): MidiMessage[] {
+  return Array.from({ length: 16 }, (_, i) => i + 1).flatMap((channel) => [
+    { channel, type: 'controlChange' as const, data1: ALL_NOTES_OFF, data2: 0 },
+    { channel, type: 'controlChange' as const, data1: ALL_SOUND_OFF, data2: 0 },
+  ])
+}

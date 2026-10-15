@@ -1,34 +1,54 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useController } from '@/hooks/useController'
-import { useMidi } from '@/hooks/useMidi'
 import { useKeyboardBindings } from '@/hooks/useKeyboardBindings'
-import { ConfigPanel } from '@/components/ConfigPanel'
-import { FxPad } from '@/components/FxPad'
-import { MidiDeviceSelector } from '@/components/MidiDeviceSelector'
-import { PadGrid } from '@/components/PadGrid'
-import { PresetPad } from '@/components/PresetPad'
-import { SetupModal } from '@/components/SetupModal'
-import { TapTempoBlock } from '@/components/TapTempoBlock'
-import { LooperBlock } from '@/components/LooperBlock'
+import { useTapTempo } from '@/hooks/useTapTempo'
+import { useLooper } from '@/hooks/useLooper'
+import { useOutput } from '@/hooks/useOutput'
+import { useAppView } from '@/hooks/useAppView'
 import { POCKET_MASTER_DELAY_TABLE } from '@/lib/pocketMasterDelayData'
 import { downloadConfig, readConfigFromFile } from '@/lib/storage'
-import type { ControllerConfig, LooperConfig, MidiMessage, PedalboardType, TapTempoBindings } from '@/lib/types'
-import { useTapTempo } from '@/hooks/useTapTempo'
-import { useBluetoothMidi } from '@/hooks/useBluetoothMidi'
-import { useLooper } from '@/hooks/useLooper'
 import { resolveLooperConfig } from '@/lib/looper'
+import { buildPanicMessages } from '@/lib/midi'
+import { profileOf } from '@/lib/profiles'
+import { padKeys } from '@/lib/keys'
+import type { ControllerConfig, FxPad, LooperCommands, LooperConfig, MidiMessage, PresetPad, TapTempoBindings } from '@/lib/types'
+import { COMMAND_LABELS } from '@/components/looper/shared'
+import { TopBar } from '@/components/shell/TopBar'
+import { BottomTabs, NavRail } from '@/components/shell/Nav'
+import { StatusBar } from '@/components/shell/StatusBar'
+import { PerformView } from '@/components/views/PerformView'
+import { EditView } from '@/components/views/EditView'
+import { LooperView } from '@/components/views/LooperView'
+import { MonitorView } from '@/components/views/MonitorView'
+import { SettingsView } from '@/components/views/SettingsView'
+import { SetupWizard } from '@/components/setup/SetupWizard'
 
-type PadRef =
-  | { kind: 'preset'; id: string }
-  | { kind: 'fx'; id: string }
+const MIDI_MSG_DELAY_MS = 60
+
+// Pocket Master "request current preset state" (command 0201020401).
+// Sending this puts the device into editor mode, after which it accepts
+// standalone 0408 parameter-set SysEx without needing a preceding PC message.
+const PM_REQUEST_PRESET_STATE = [0xF0, 0x00, 0x09, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x01, 0x02, 0x04, 0x01, 0xF7]
+
+const sameMsg = (a: MidiMessage, b: MidiMessage) =>
+  a.channel === b.channel && a.type === b.type && a.data1 === b.data1 && a.data2 === b.data2
+
+/** Monitor label for a looper message, found by matching it against the configured commands. */
+function looperSource(msg: MidiMessage, commands: LooperCommands): string {
+  const hit = COMMAND_LABELS.find(({ key }) => sameMsg(commands[key], msg))
+  return hit ? `Looper ${hit.label.replace(/ \(.*\)$/, '').toLowerCase()}` : 'Looper'
+}
 
 export default function ControllerPage() {
+  const controller = useController()
   const {
     config,
     activePresetId,
     soloPresetId,
+    activeBank,
+    setActiveBank,
     fxStates,
     activatePreset,
     toggleFx,
@@ -36,50 +56,41 @@ export default function ControllerPage() {
     patchConfig,
     enterSoloMode,
     exitSoloMode,
-    addPreset,
-    removePreset,
-    addFxPad,
-    removeFxPad,
-  } = useController()
-  const { outputs, selectedOutputId, setSelectedOutputId, sendMessage, sendRaw, error } = useMidi()
-  const bt = useBluetoothMidi()
+  } = controller
+  const output = useOutput()
+  const { send, sendRaw } = output
   const tapTempo = useTapTempo()
-
-  const send = (msg: Parameters<typeof sendMessage>[0]) =>
-    bt.device ? bt.sendMessage(msg) : sendMessage(msg)
-
-  const sendRawData = (bytes: number[]) =>
-    bt.device ? bt.sendRaw(bytes) : sendRaw(bytes)
-
-  // USB: Web MIDI schedules the send itself. BLE has no timestamps, so we wait with a timer.
-  const sendAt = (msg: MidiMessage, perfTime: number) => {
-    if (!bt.device) return sendMessage(msg, perfTime)
-    const delay = perfTime - performance.now()
-    if (delay <= 1) bt.sendMessage(msg)
-    else setTimeout(() => bt.sendMessage(msg), delay)
-  }
+  const { view, setView } = useAppView()
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const looperConfig = resolveLooperConfig(config.looper)
-  const handleUpdateLooper = (looper: LooperConfig) => patchConfig({ looper })
-  const looper = useLooper({ config: looperConfig, onConfigChange: handleUpdateLooper, sendAt, sendNow: send })
+  const handleUpdateLooper = useCallback((looper: LooperConfig) => patchConfig({ looper }), [patchConfig])
+  const looper = useLooper({
+    config: looperConfig,
+    onConfigChange: handleUpdateLooper,
+    sendAt: (msg, perfTime) => output.sendAt(msg, perfTime, looperSource(msg, looperConfig.commands)),
+    sendNow: (msg) => send(msg, looperSource(msg, looperConfig.commands)),
+  })
 
-  const MIDI_MSG_DELAY_MS = 60
-
-
-  // Pocket Master "request current preset state" (command 0201020401).
-  // Sending this puts the device into editor mode, after which it accepts
-  // standalone 0408 parameter-set SysEx without needing a preceding PC message.
-  const PM_REQUEST_PRESET_STATE = [0xF0,0x00,0x09,0x00,0x01,0x00,0x00,0x00,0x02,0x01,0x02,0x04,0x01,0xF7]
-
-  const tapTempoSendRef = useRef<() => void>(() => { })
-  tapTempoSendRef.current = () => {
-    if (!tapTempo.isEnabled || tapTempo.closestMs === null) return
+  const sendTapDelay = (source: string) => {
+    if (tapTempo.closestMs === null) return null
     const bytes = POCKET_MASTER_DELAY_TABLE[tapTempo.closestMs]
-    if (!bytes) return
-    // Prime the device into editor mode, then send delay time 100ms later
-    sendRawData(PM_REQUEST_PRESET_STATE)
-    setTimeout(() => sendRawData(bytes.slice(2)), 100)
+    // Table entries include a 2-byte BLE MIDI framing header from capture; strip it
+    // so both USB (output.send) and BLE (writeBleMidiRaw) receive plain SysEx [0xF0…0xF7]
+    return bytes ? () => sendRaw(bytes.slice(2), source) : null
   }
+
+  const tapTempoSendRef = useRef<() => void>(() => {})
+  useLayoutEffect(() => {
+    tapTempoSendRef.current = () => {
+      if (!tapTempo.isEnabled) return
+      const fire = sendTapDelay(`Tap delay ${tapTempo.closestMs} ms`)
+      if (!fire) return
+      // Prime the device into editor mode, then send delay time 100ms later
+      sendRaw(PM_REQUEST_PRESET_STATE, 'Tap delay: editor mode')
+      setTimeout(fire, 100)
+    }
+  })
 
   useEffect(() => {
     if (!tapTempo.isEnabled || tapTempo.closestMs === null) return
@@ -87,56 +98,28 @@ export default function ControllerPage() {
     return () => clearTimeout(timer)
   }, [tapTempo.isEnabled, tapTempo.closestMs])
 
-  const [configuringPad, setConfiguringPad] = useState<PadRef | null>(null)
-  const [isTapConfigOpen, setIsTapConfigOpen] = useState(false)
-  const [isLooperConfigOpen, setIsLooperConfigOpen] = useState(false)
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
-  const importInputRef = useRef<HTMLInputElement>(null)
-
-  const isAnyConfigOpen = configuringPad !== null || isTapConfigOpen || isLooperConfigOpen
-
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      const imported = await readConfigFromFile(file)
-      updateConfig(imported)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to import configuration')
-    } finally {
-      e.target.value = ''
-    }
-  }
+  const fxName = (fx: FxPad) => config.presets.find((p) => p.id === activePresetId)?.fxAliases?.[fx.id] || fx.name
 
   const handlePresetClick = (id: string) => {
+    const sendFx = (fxId: string, on: boolean, i: number) => {
+      const fx = config.fxPads.find((f) => f.id === fxId)
+      if (!fx) return
+      setTimeout(() => send(on ? fx.midiOn : fx.midiOff, `FX ${fxName(fx)} ${on ? 'on' : 'off'}`), i * MIDI_MSG_DELAY_MS)
+    }
     if (soloPresetId === id) {
       const { toActivate, toDeactivate } = exitSoloMode()
-      const msgs = [
-        ...toActivate.map((fxId) => ({ fxId, on: true })),
-        ...toDeactivate.map((fxId) => ({ fxId, on: false })),
-      ]
-      msgs.forEach(({ fxId, on }, i) => {
-        const fx = config.fxPads.find((f) => f.id === fxId)
-        if (!fx) return
-        setTimeout(() => send(on ? fx.midiOn : fx.midiOff), i * MIDI_MSG_DELAY_MS)
-      })
+      ;[...toActivate.map((fxId) => ({ fxId, on: true })), ...toDeactivate.map((fxId) => ({ fxId, on: false }))].forEach(
+        ({ fxId, on }, i) => sendFx(fxId, on, i),
+      )
     } else if (activePresetId === id) {
-      const toActivate = enterSoloMode(id)
-      toActivate.forEach((fxId, i) => {
-        const fx = config.fxPads.find((f) => f.id === fxId)
-        if (!fx) return
-        setTimeout(() => send(fx.midiOn), i * MIDI_MSG_DELAY_MS)
-      })
+      enterSoloMode(id).forEach((fxId, i) => sendFx(fxId, true, i))
     } else {
       const preset = config.presets.find((p) => p.id === id)
-      if (preset) send(preset.midi)
+      if (preset) send(preset.midi, `Preset ${preset.name}`)
       activatePreset(id)
-      if (tapTempo.isEnabled && tapTempo.closestMs !== null) {
-        const bytes = POCKET_MASTER_DELAY_TABLE[tapTempo.closestMs]
-        // Table entries include a 2-byte BLE MIDI framing header from capture; strip it
-        // so both USB (output.send) and BLE (writeBleMidiRaw) receive plain SysEx [0xF0…0xF7]
-        if (bytes) setTimeout(() => sendRawData(bytes.slice(2)), MIDI_MSG_DELAY_MS)
+      if (tapTempo.isEnabled) {
+        const fire = sendTapDelay(`Tap delay ${tapTempo.closestMs} ms`)
+        if (fire) setTimeout(fire, MIDI_MSG_DELAY_MS)
       }
     }
   }
@@ -145,498 +128,169 @@ export default function ControllerPage() {
     const fx = config.fxPads.find((f) => f.id === id)
     if (fx) {
       const isCurrentlyOn = fxStates[id] ?? false
-      send(isCurrentlyOn ? fx.midiOff : fx.midiOn)
+      send(isCurrentlyOn ? fx.midiOff : fx.midiOn, `FX ${fxName(fx)} ${isCurrentlyOn ? 'off' : 'on'}`)
     }
     toggleFx(id)
   }
 
-  const movePreset = (id: string, dir: -1 | 1) => {
-    const arr = [...config.presets]
-    const i = arr.findIndex(p => p.id === id)
-    const j = i + dir
-    if (i < 0 || j < 0 || j >= arr.length) return
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
-    updateConfig({ ...config, presets: arr })
+  const handlePanic = () => buildPanicMessages().forEach((m) => send(m, 'Panic'))
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      updateConfig(await readConfigFromFile(file))
+      setActiveBank('A')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to import configuration')
+    } finally {
+      e.target.value = ''
+    }
   }
 
-  const moveFxPad = (id: string, dir: -1 | 1) => {
-    const arr = [...config.fxPads]
-    const i = arr.findIndex(f => f.id === id)
-    const j = i + dir
-    if (i < 0 || j < 0 || j >= arr.length) return
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
-    updateConfig({ ...config, fxPads: arr })
-  }
+  const savePreset = (updated: PresetPad) =>
+    patchConfig({ presets: config.presets.map((p) => (p.id === updated.id ? updated : p)) })
+  const saveFx = (updated: FxPad) => patchConfig({ fxPads: config.fxPads.map((f) => (f.id === updated.id ? updated : f)) })
+  const handleUpdateTapBindings = (tapTempoBindings: TapTempoBindings) => patchConfig({ tapTempoBindings })
 
-  const handleUpdateTapTempoBindings = (bindings: TapTempoBindings) => {
-    updateConfig({ ...config, tapTempoBindings: bindings })
-  }
+  const allPadKeys = padKeys(config)
+  const looperKeys = Object.values(looperConfig.bindings).filter(Boolean) as string[]
+  const tapKeys = Object.values(config.tapTempoBindings ?? {}).filter(Boolean) as string[]
+  const tapOtherUsedKeys = new Set([...allPadKeys, ...looperKeys])
+  const looperOtherUsedKeys = new Set([...allPadKeys, ...tapKeys])
 
-  const isPocketMaster = config.pedalboardType === 'pocketMaster'
-
-  const handlePedalboardTypeChange = (type: PedalboardType) => {
-    updateConfig({ ...config, pedalboardType: type })
-  }
-
-  useKeyboardBindings({
-    config,
-    onPresetPad: handlePresetClick,
-    onFxPad: handleToggleFx,
-    onTap: tapTempo.tap,
-    onCycleSubdivision: tapTempo.cycleSubdivision,
-    onDisable: tapTempo.disable,
-    looperBindings: looperConfig.bindings,
-    looperActions: {
+  const looperActions = useMemo(
+    () => ({
       toggle: looper.toggle,
       rec: looper.record,
       playStop: looper.playStop,
       clear: looper.clear,
       click: looper.toggleClick,
       tap: looper.tap,
-    },
-    enabled: !isAnyConfigOpen,
+    }),
+    [looper.toggle, looper.record, looper.playStop, looper.clear, looper.toggleClick, looper.tap],
+  )
+
+  const hasConfig = config.presets.length > 0 || config.fxPads.length > 0
+  const showLooper = config.showLooper !== false
+
+  useKeyboardBindings({
+    config,
+    activeBank,
+    onPresetPad: handlePresetClick,
+    onFxPad: handleToggleFx,
+    onTap: tapTempo.tap,
+    onCycleSubdivision: tapTempo.cycleSubdivision,
+    onDisable: tapTempo.disable,
+    looperBindings: looperConfig.bindings,
+    looperActions,
+    // Editing and settings use the keyboard for typing and key capture.
+    enabled: hasConfig && (view === 'perform' || view === 'looper' || view === 'monitor'),
   })
 
-  const activePreset = config.presets.find(p => p.id === activePresetId)
-  const hasConfig = config.presets.length > 0 || config.fxPads.length > 0
-  const presetColumns = Math.min(Math.max(config.presets.length, 1), 8)
-  const fxColumns = Math.min(Math.max(config.fxPads.length, 1), 8)
-  const mobilePresetCols = Math.min(presetColumns, 4)
-  const mobileFxCols = Math.min(fxColumns, 4)
-
-  const padKeys = [
-    ...config.presets.filter((p) => p.keyBinding).map((p) => p.keyBinding!),
-    ...config.fxPads.filter((f) => f.keyBinding).map((f) => f.keyBinding!),
-  ]
-  const looperKeys = Object.values(looperConfig.bindings).filter(Boolean) as string[]
-  const tapKeys = Object.values(config.tapTempoBindings ?? {}).filter(Boolean) as string[]
-  const otherUsedKeys = new Set([...padKeys, ...looperKeys])
-  const looperOtherUsedKeys = new Set([...padKeys, ...tapKeys])
-
-  const githubIcon = (
-    <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" aria-hidden="true" className="shrink-0">
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
-    </svg>
+  const importInput = (
+    <input ref={importInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
   )
 
-  const actionButtons = (
-    <>
-      <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Pedalboard</span>
-      <select
-        value={config.pedalboardType ?? 'outros'}
-        onChange={(e) => { handlePedalboardTypeChange(e.target.value as PedalboardType); setIsMenuOpen(false) }}
-        className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-indigo-500"
-      >
-        <option value="outros">Other</option>
-        <option value="pocketMaster">Pocket Master</option>
-        <option value="valetonGp5">Valeton GP5</option>
-      </select>
-      <hr className="border-zinc-700 my-1" />
-      {hasConfig && (
-        <>
-          <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Add</span>
-          <button
-            onClick={() => { addPreset(); setIsMenuOpen(false) }}
-            className="text-xs text-zinc-400 hover:text-emerald-400 transition-colors text-left py-1"
-          >
-            + Preset
-          </button>
-          <button
-            onClick={() => { addFxPad(); setIsMenuOpen(false) }}
-            className="text-xs text-zinc-400 hover:text-emerald-400 transition-colors text-left py-1"
-          >
-            + FX
-          </button>
-          <hr className="border-zinc-700 my-1" />
-        </>
-      )}
-      <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1">Files</span>
-      {hasConfig && (
-        <button
-          onClick={() => { downloadConfig(config); setIsMenuOpen(false) }}
-          className="text-xs text-zinc-400 hover:text-indigo-400 transition-colors text-left py-1"
-        >
-          Export
-        </button>
-      )}
-      <button
-        onClick={() => { importInputRef.current?.click(); setIsMenuOpen(false) }}
-        className="text-xs text-zinc-400 hover:text-indigo-400 transition-colors text-left py-1"
-      >
-        Import
-      </button>
-      {hasConfig && (
-        <>
-          <hr className="border-zinc-700 my-1" />
-          <button
-            onClick={() => { updateConfig({ presets: [], fxPads: [] }); setIsMenuOpen(false) }}
-            className="text-xs text-zinc-500 hover:text-red-400 transition-colors text-left py-1"
-          >
-            Reset
-          </button>
-        </>
-      )}
-      {bt.isSupported && (
-        <>
-          <hr className="border-zinc-700 my-1" />
-          <span className="text-[10px] text-zinc-600 uppercase tracking-wider px-1 pt-1">Bluetooth</span>
-          {bt.device ? (
-            <>
-              <span className="text-xs text-blue-400 truncate">{bt.device.name}</span>
-              <button
-                onClick={() => { bt.disconnect(); setIsMenuOpen(false) }}
-                className="text-xs text-zinc-500 hover:text-red-400 transition-colors text-left py-1"
-              >
-                Disconnect
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => { bt.connect(); setIsMenuOpen(false) }}
-                disabled={bt.isConnecting}
-                className="text-xs text-zinc-400 hover:text-blue-400 transition-colors text-left py-1 disabled:opacity-40"
-              >
-                {bt.isConnecting ? 'Connecting...' : 'Connect via BT'}
-              </button>
-              {bt.connectError && (
-                <span className="text-[10px] text-red-400 leading-tight px-1 pb-1">
-                  {bt.connectError}
-                </span>
-              )}
-            </>
-          )}
-        </>
-      )}
-      <hr className="border-zinc-700 my-1" />
-      <a
-        href="https://github.com/hitaloose/universal-midi-controller"
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={() => setIsMenuOpen(false)}
-        className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors text-left py-1"
-      >
-        {githubIcon}
-        GitHub
-      </a>
-    </>
-  )
+  if (!hasConfig) {
+    return (
+      <>
+        <SetupWizard
+          output={output}
+          onCreate={(c: ControllerConfig) => {
+            updateConfig(c)
+            setActiveBank('A')
+            setView('perform')
+          }}
+          onImport={() => importInputRef.current?.click()}
+        />
+        {importInput}
+      </>
+    )
+  }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-white flex flex-col">
-      {/* Header */}
-      <header className="border-b border-zinc-800 px-4 sm:px-6 py-3 flex items-center gap-4 sm:gap-6 shrink-0">
-        <h1 className="hidden sm:block text-sm font-bold tracking-widest uppercase text-zinc-400 shrink-0">
-          MIDI Controller
-        </h1>
-        <select
-          value={config.pedalboardType ?? 'outros'}
-          onChange={(e) => handlePedalboardTypeChange(e.target.value as PedalboardType)}
-          className="hidden sm:block bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-400 focus:outline-none focus:border-indigo-500 shrink-0"
-        >
-          <option value="outros">Other</option>
-          <option value="pocketMaster">Pocket Master</option>
-          <option value="valetonGp5">Valeton GP5</option>
-        </select>
-        <div className="flex-1 min-w-0">
-          <MidiDeviceSelector
-            outputs={outputs}
-            selectedOutputId={selectedOutputId}
-            onSelect={setSelectedOutputId}
-            error={error}
-          />
-        </div>
-
-        {/* Bluetooth — desktop */}
-        {bt.isSupported && (
-          <div className="hidden sm:flex flex-col items-end gap-0.5 shrink-0">
-            <div className="flex items-center gap-2">
-              {bt.device ? (
-                <>
-                  <span className="text-xs text-blue-400 truncate max-w-[120px]">{bt.device.name}</span>
-                  <button
-                    onClick={bt.disconnect}
-                    className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
-                  >
-                    ✕
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={bt.connect}
-                  disabled={bt.isConnecting}
-                  className="text-xs text-zinc-500 hover:text-blue-400 transition-colors disabled:opacity-40"
-                >
-                  {bt.isConnecting ? 'Connecting...' : '⬡ BT'}
-                </button>
-              )}
-              <div className={`w-2 h-2 rounded-full shrink-0 ${bt.device ? 'bg-blue-400' : 'bg-zinc-600'}`} />
-            </div>
-            {bt.connectError && (
-              <span className="text-[10px] text-red-400 max-w-[200px] text-right leading-tight">
-                {bt.connectError}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Edit mode button — desktop */}
-        {hasConfig && (
-          <button
-            onClick={() => setIsEditMode(v => !v)}
-            className={`hidden sm:flex items-center justify-center w-7 h-7 rounded transition-colors shrink-0
-              ${isEditMode ? 'text-indigo-400 bg-indigo-950 hover:bg-indigo-900' : 'text-zinc-500 hover:text-zinc-300'}`}
-            title={isEditMode ? 'Exit edit mode' : 'Edit mode'}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
-            </svg>
-          </button>
-        )}
-
-        {/* Action buttons — desktop */}
-        <div className="hidden sm:flex items-center gap-2 shrink-0">
-          {/* Group: Add */}
-          {hasConfig && (
-            <>
-              <button onClick={addPreset} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors">
-                + Preset
-              </button>
-              <button onClick={addFxPad} className="text-xs text-zinc-500 hover:text-emerald-400 transition-colors">
-                + FX
-              </button>
-              <span className="w-px h-4 bg-zinc-700" />
-            </>
+    <div className="min-h-dvh bg-ground text-ink flex flex-col">
+      <TopBar
+        setupName={profileOf(config).label}
+        connection={output.connection}
+        onConnectionClick={() => setView('settings')}
+        onPanic={handlePanic}
+      />
+      <div className="flex-1 flex items-stretch">
+        <NavRail view={view} onChange={setView} hideLooper={!showLooper} />
+        <main className="flex-1 min-w-0 pb-20 md:pb-0">
+          {view === 'perform' && (
+            <PerformView
+              config={config}
+              activeBank={activeBank}
+              onBankChange={setActiveBank}
+              activePresetId={activePresetId}
+              soloPresetId={soloPresetId}
+              fxStates={fxStates}
+              onPreset={handlePresetClick}
+              onFx={handleToggleFx}
+              tapTempo={tapTempo}
+              onUpdateTapBindings={handleUpdateTapBindings}
+              tapOtherUsedKeys={tapOtherUsedKeys}
+              looper={looper}
+              looperConfig={looperConfig}
+              onOpenLooper={() => setView('looper')}
+              onOpenEdit={() => setView('edit')}
+            />
           )}
-
-          {/* Group: Files */}
-          {hasConfig && (
-            <button onClick={() => downloadConfig(config)} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors">
-              Export
-            </button>
+          {view === 'edit' && (
+            <EditView
+              config={config}
+              activeBank={activeBank}
+              onBankChange={setActiveBank}
+              addPreset={controller.addPreset}
+              addFxPad={controller.addFxPad}
+              duplicatePreset={controller.duplicatePreset}
+              removePreset={controller.removePreset}
+              removeFxPad={controller.removeFxPad}
+              movePreset={controller.movePreset}
+              moveFxPad={controller.moveFxPad}
+              savePreset={savePreset}
+              saveFx={saveFx}
+              onSendTest={send}
+              onImport={() => importInputRef.current?.click()}
+              onExport={() => downloadConfig(config)}
+              onDone={() => setView('perform')}
+            />
           )}
-          <button onClick={() => importInputRef.current?.click()} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors">
-            Import
-          </button>
-
-          {/* Group: Destructive */}
-          {hasConfig && (
-            <>
-              <span className="w-px h-4 bg-zinc-700" />
-              <button onClick={() => updateConfig({ presets: [], fxPads: [] })} className="text-xs text-zinc-600 hover:text-red-400 transition-colors">
-                Reset
-              </button>
-            </>
+          {view === 'looper' && (
+            <LooperView
+              looper={looper}
+              config={looperConfig}
+              onChange={handleUpdateLooper}
+              sendNow={send}
+              otherUsedKeys={looperOtherUsedKeys}
+              isBluetooth={!!output.bt.device}
+            />
           )}
-
-          {/* GitHub */}
-          <span className="w-px h-4 bg-zinc-700" />
-          <a
-            href="https://github.com/hitaloose/universal-midi-controller"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-zinc-500 hover:text-white transition-colors"
-          >
-            {githubIcon}
-            GitHub
-          </a>
-        </div>
-
-        {/* Mobile: edit button + ⋮ menu */}
-        <div className="sm:hidden flex items-center gap-1 shrink-0">
-          {hasConfig && (
-            <button
-              onClick={() => setIsEditMode(v => !v)}
-              className={`w-8 h-8 flex items-center justify-center rounded transition-colors
-                ${isEditMode ? 'text-indigo-400 bg-indigo-950' : 'text-zinc-500 hover:text-zinc-300'}`}
-              title={isEditMode ? 'Exit edit mode' : 'Edit mode'}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/>
-              </svg>
-            </button>
+          {view === 'monitor' && <MonitorView log={output.log} defaultChannel={config.defaultChannel ?? 1} connected={output.connection.kind !== 'none'} onSend={send} />}
+          {view === 'settings' && (
+            <SettingsView
+              config={config}
+              activeBank={activeBank}
+              output={output}
+              onPatch={patchConfig}
+              onPanic={handlePanic}
+              onExport={() => downloadConfig(config)}
+              onImport={() => importInputRef.current?.click()}
+              onReset={() => {
+                if (looper.state !== 'off') looper.toggle()
+                updateConfig({ presets: [], fxPads: [] })
+                setActiveBank('A')
+              }}
+            />
           )}
-          <div className="relative">
-            <button
-              onClick={() => setIsMenuOpen((v) => !v)}
-              className="w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-300 transition-colors rounded"
-              aria-label="Menu"
-            >
-              ⋮
-            </button>
-            {isMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
-                <div className="fixed top-14 right-4 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl z-50 flex flex-col p-2 min-w-[120px]">
-                  {actionButtons}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Content */}
-      <div className="flex-1 flex flex-col gap-6 p-4 sm:p-6 max-w-5xl mx-auto w-full">
-        {hasConfig ? (
-          <>
-            {/* Desktop: original columns (up to 8) */}
-            <div className="hidden sm:contents">
-              {config.presets.length > 0 && (
-                <PadGrid label="Presets" columns={presetColumns}>
-                  {config.presets.map((preset, index) => (
-                    <PresetPad
-                      key={preset.id}
-                      pad={preset}
-                      isActive={activePresetId === preset.id}
-                      isSolo={soloPresetId === preset.id}
-                      isEditMode={isEditMode}
-                      onClick={() => handlePresetClick(preset.id)}
-                      onConfigure={() => setConfiguringPad({ kind: 'preset', id: preset.id })}
-                      onMoveLeft={index > 0 ? () => movePreset(preset.id, -1) : undefined}
-                      onMoveRight={index < config.presets.length - 1 ? () => movePreset(preset.id, 1) : undefined}
-                    />
-                  ))}
-                </PadGrid>
-              )}
-              {config.fxPads.length > 0 && (
-                <PadGrid label="FX" columns={fxColumns}>
-                  {config.fxPads.map((fx, index) => (
-                    <FxPad
-                      key={fx.id}
-                      pad={fx}
-                      isOn={fxStates[fx.id] ?? false}
-                      isEditMode={isEditMode}
-                      onClick={() => handleToggleFx(fx.id)}
-                      onConfigure={() => setConfiguringPad({ kind: 'fx', id: fx.id })}
-                      displayName={activePreset?.fxAliases?.[fx.id] || undefined}
-                      onMoveLeft={index > 0 ? () => moveFxPad(fx.id, -1) : undefined}
-                      onMoveRight={index < config.fxPads.length - 1 ? () => moveFxPad(fx.id, 1) : undefined}
-                    />
-                  ))}
-                </PadGrid>
-              )}
-              {isPocketMaster && (
-                <TapTempoBlock
-                  isEnabled={tapTempo.isEnabled}
-                  bpm={tapTempo.bpm}
-                  subdivision={tapTempo.subdivision}
-                  delayMs={tapTempo.delayMs}
-                  closestMs={tapTempo.closestMs}
-                  onTap={tapTempo.tap}
-                  onCycleSubdivision={tapTempo.cycleSubdivision}
-                  onDisable={tapTempo.disable}
-                  tapTempoBindings={config.tapTempoBindings ?? {}}
-                  onUpdateTapTempoBindings={handleUpdateTapTempoBindings}
-                  otherUsedKeys={otherUsedKeys}
-                  onConfigOpenChange={setIsTapConfigOpen}
-                />
-              )}
-              <LooperBlock
-                looper={looper}
-                config={looperConfig}
-                onChange={handleUpdateLooper}
-                sendNow={send}
-                otherUsedKeys={looperOtherUsedKeys}
-                onConfigOpenChange={setIsLooperConfigOpen}
-                isBluetooth={!!bt.device}
-              />
-            </div>
-
-            {/* Mobile: all sections visible, columns capped at 4 */}
-            <div className="sm:hidden flex flex-col gap-6">
-              {config.presets.length > 0 && (
-                <PadGrid label="Presets" columns={mobilePresetCols}>
-                  {config.presets.map((preset, index) => (
-                    <PresetPad
-                      key={preset.id}
-                      pad={preset}
-                      isActive={activePresetId === preset.id}
-                      isSolo={soloPresetId === preset.id}
-                      isEditMode={isEditMode}
-                      onClick={() => handlePresetClick(preset.id)}
-                      onConfigure={() => setConfiguringPad({ kind: 'preset', id: preset.id })}
-                      onMoveLeft={index > 0 ? () => movePreset(preset.id, -1) : undefined}
-                      onMoveRight={index < config.presets.length - 1 ? () => movePreset(preset.id, 1) : undefined}
-                    />
-                  ))}
-                </PadGrid>
-              )}
-              {config.fxPads.length > 0 && (
-                <PadGrid label="FX" columns={mobileFxCols}>
-                  {config.fxPads.map((fx, index) => (
-                    <FxPad
-                      key={fx.id}
-                      pad={fx}
-                      isOn={fxStates[fx.id] ?? false}
-                      isEditMode={isEditMode}
-                      onClick={() => handleToggleFx(fx.id)}
-                      onConfigure={() => setConfiguringPad({ kind: 'fx', id: fx.id })}
-                      displayName={activePreset?.fxAliases?.[fx.id] || undefined}
-                      onMoveLeft={index > 0 ? () => moveFxPad(fx.id, -1) : undefined}
-                      onMoveRight={index < config.fxPads.length - 1 ? () => moveFxPad(fx.id, 1) : undefined}
-                    />
-                  ))}
-                </PadGrid>
-              )}
-              {isPocketMaster && (
-                <TapTempoBlock
-                  isEnabled={tapTempo.isEnabled}
-                  bpm={tapTempo.bpm}
-                  subdivision={tapTempo.subdivision}
-                  delayMs={tapTempo.delayMs}
-                  closestMs={tapTempo.closestMs}
-                  onTap={tapTempo.tap}
-                  onCycleSubdivision={tapTempo.cycleSubdivision}
-                  onDisable={tapTempo.disable}
-                  tapTempoBindings={config.tapTempoBindings ?? {}}
-                  onUpdateTapTempoBindings={handleUpdateTapTempoBindings}
-                  otherUsedKeys={otherUsedKeys}
-                  onConfigOpenChange={setIsTapConfigOpen}
-                />
-              )}
-              <LooperBlock
-                looper={looper}
-                config={looperConfig}
-                onChange={handleUpdateLooper}
-                sendNow={send}
-                otherUsedKeys={looperOtherUsedKeys}
-                onConfigOpenChange={setIsLooperConfigOpen}
-                isBluetooth={!!bt.device}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-zinc-700 text-sm">
-            Set up the controller to get started.
-          </div>
-        )}
+        </main>
       </div>
-
-      <input
-        ref={importInputRef}
-        type="file"
-        accept=".json"
-        className="hidden"
-        onChange={handleImport}
-      />
-
-      {!hasConfig && <SetupModal onConfirm={updateConfig} />}
-
-      <ConfigPanel
-        padRef={configuringPad}
-        config={config}
-        onSave={(updated: ControllerConfig) => {
-          updateConfig(updated)
-          setConfiguringPad(null)
-        }}
-        onRemove={(id, kind) => {
-          if (kind === 'preset') removePreset(id)
-          else removeFxPad(id)
-          setConfiguringPad(null)
-        }}
-        onClose={() => setConfiguringPad(null)}
-      />
-    </main>
+      {view === 'perform' && <StatusBar last={output.log.last} midiError={output.midi.error} />}
+      <BottomTabs view={view} onChange={setView} hideLooper={!showLooper} />
+      {importInput}
+    </div>
   )
 }

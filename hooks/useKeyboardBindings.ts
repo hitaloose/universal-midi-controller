@@ -1,8 +1,11 @@
 import { useEffect } from 'react'
-import type { ControllerConfig, LooperBindings } from '@/lib/types'
+import type { BankId, ControllerConfig, LooperBindings } from '@/lib/types'
+import { presetsInBank } from '@/hooks/useController'
 
 type Props = {
   config: ControllerConfig
+  /** Preset keys only fire for the presets of this bank, so each bank can reuse 1–8. */
+  activeBank: BankId
   onPresetPad: (id: string) => void
   onFxPad: (id: string) => void
   onTap: () => void
@@ -15,6 +18,7 @@ type Props = {
 
 export function useKeyboardBindings({
   config,
+  activeBank,
   onPresetPad,
   onFxPad,
   onTap,
@@ -28,7 +32,7 @@ export function useKeyboardBindings({
     if (!enabled) return
 
     const presetMap = new Map(
-      config.presets
+      presetsInBank(config, activeBank)
         .filter((p) => p.keyBinding)
         .map((p) => [p.keyBinding!, p.id])
     )
@@ -48,6 +52,8 @@ export function useKeyboardBindings({
       const target = e.target as HTMLElement
       const tag = target.tagName
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+      // A dialog (e.g. looper settings) owns the keyboard while open.
+      if (document.querySelector('[aria-modal="true"]')) return
 
       const { code } = e
 
@@ -75,5 +81,5 @@ export function useKeyboardBindings({
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [config, enabled, onPresetPad, onFxPad, onTap, onCycleSubdivision, onDisable, looperBindings, looperActions])
+  }, [config, activeBank, enabled, onPresetPad, onFxPad, onTap, onCycleSubdivision, onDisable, looperBindings, looperActions])
 }

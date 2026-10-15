@@ -1,22 +1,41 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* Stage-ready dark UI. Amber for presets, mint for FX, violet for solo,
+   blue for edit mode, red only for record and panic. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-ground: #0d0e10;
+  --color-bar: #111316;
+  --color-surface: #15171a;
+  --color-surface-2: #1d2024;
+  --color-line: #2a2e34;
+  --color-line-soft: #23272d;
+  --color-line-strong: #3a4048;
+  --color-ink: #ecedef;
+  --color-ink-dim: #a3a9b1;
+  --color-ink-mute: #8a9099;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-preset: #ffb224;
+  --color-preset-hi: #ffc95c;
+  --color-preset-ink: #1a1200;
+  --color-fx: #3ddc97;
+  --color-fx-deep: #10382a;
+  --color-fx-line: #2f9e6f;
+  --color-fx-ink: #c9f5e0;
+  --color-solo: #b79cff;
+  --color-solo-hi: #d2bfff;
+  --color-solo-ink: #140a33;
+  --color-edit: #5aa9ff;
+  --color-rec: #d6333a;
+  --color-rec-hi: #ffb3b5;
+  --color-panic: #ff8a8d;
+  --color-warn-ink: #e8d7b0;
+
+  --radius-pad: 16px;
+  --radius-card: 18px;
+  --radius-control: 10px;
+
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 html, body {
@@ -25,7 +44,13 @@ html, body {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  color-scheme: dark;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-preset);
+  outline-offset: 2px;
 }

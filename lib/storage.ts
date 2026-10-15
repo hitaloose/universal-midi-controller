@@ -1,5 +1,13 @@
 import type { ControllerConfig } from './types'
 
+/** Fills in fields added after a config was saved, so old configs and imports keep working. */
+export function normalizeConfig(config: ControllerConfig): ControllerConfig {
+  return {
+    ...config,
+    presets: config.presets.map((p) => ({ ...p, bank: p.bank ?? 'A' })),
+  }
+}
+
 const STORAGE_KEY = 'umc-config'
 const MIDI_OUTPUT_KEY = 'umc-last-midi-output'
 const BT_DEVICE_KEY = 'umc-last-bt-device'
@@ -8,7 +16,7 @@ export function loadConfig(): ControllerConfig | null {
   if (typeof window === 'undefined') return null
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as ControllerConfig) : null
+    return raw ? normalizeConfig(JSON.parse(raw) as ControllerConfig) : null
   } catch {
     return null
   }
@@ -39,14 +47,18 @@ export function saveLastBtDeviceName(name: string): void {
   localStorage.setItem(BT_DEVICE_KEY, name)
 }
 
-export function downloadConfig(config: ControllerConfig): void {
-  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
+export function downloadFile(name: string, content: string, type: string): void {
+  const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'midi-config.json'
+  a.download = name
   a.click()
   URL.revokeObjectURL(url)
+}
+
+export function downloadConfig(config: ControllerConfig): void {
+  downloadFile('midi-config.json', JSON.stringify(config, null, 2), 'application/json')
 }
 
 export function readConfigFromFile(file: File): Promise<ControllerConfig> {
@@ -59,7 +71,7 @@ export function readConfigFromFile(file: File): Promise<ControllerConfig> {
           reject(new Error('Invalid file: incorrect structure'))
           return
         }
-        resolve(parsed as ControllerConfig)
+        resolve(normalizeConfig(parsed as ControllerConfig))
       } catch {
         reject(new Error('Invalid file: malformed JSON'))
       }

@@ -27,12 +27,13 @@ export function formatKeyCode(code: string): string {
 }
 
 type Props = {
+  label?: string
   value: string | undefined
   usedKeys: Set<string>
   onChange: (code: string | undefined) => void
 }
 
-export function KeyBindingField({ value, usedKeys, onChange }: Props) {
+export function KeyBindingField({ label = 'Keyboard key', value, usedKeys, onChange }: Props) {
   const [isCapturing, setIsCapturing] = useState(false)
 
   useEffect(() => {
@@ -41,57 +42,51 @@ export function KeyBindingField({ value, usedKeys, onChange }: Props) {
       e.preventDefault()
       e.stopPropagation()
       setIsCapturing(false)
-      onChange(e.code)
+      if (e.code !== 'Escape') onChange(e.code)
     }
     document.addEventListener('keydown', handler, { capture: true })
     return () => document.removeEventListener('keydown', handler, { capture: true })
   }, [isCapturing, onChange])
 
   const conflict = value !== undefined && usedKeys.has(value)
+  const small =
+    'h-9 px-3 rounded-lg border border-line bg-surface-2 text-ink text-[13px] font-semibold cursor-pointer hover:bg-line-soft'
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-        Keyboard key
-      </span>
-      <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs font-semibold tracking-[0.1em] uppercase text-ink-dim">{label}</span>
+      <div className="flex items-center gap-2 flex-wrap min-h-9">
         {isCapturing ? (
           <button
+            type="button"
             onClick={() => setIsCapturing(false)}
-            className="bg-indigo-900 border border-indigo-500 rounded px-3 py-1.5 text-sm text-indigo-200 animate-pulse"
+            className="h-9 px-3 rounded-lg border border-preset bg-preset/10 text-preset text-[13px] font-semibold animate-pulse cursor-pointer"
           >
-            Press a key… (click to cancel)
+            Press a key… (Esc to cancel)
           </button>
         ) : value !== undefined ? (
           <>
-            <span className="bg-zinc-800 border border-zinc-600 rounded px-2 py-0.5 text-sm font-mono text-white">
+            <span className="font-mono text-[15px] font-bold min-w-9 text-center px-2 py-1 rounded-lg border border-line bg-ground">
               {formatKeyCode(value)}
             </span>
-            <button
-              onClick={() => setIsCapturing(true)}
-              className="text-xs text-zinc-400 hover:text-white transition-colors"
-            >
+            <button type="button" onClick={() => setIsCapturing(true)} className={small}>
               Change
             </button>
             <button
+              type="button"
               onClick={() => onChange(undefined)}
-              className="text-xs text-zinc-500 hover:text-red-400 transition-colors"
+              className="h-9 px-2 text-[13px] text-ink-dim hover:text-panic cursor-pointer"
             >
               Remove
             </button>
           </>
         ) : (
-          <button
-            onClick={() => setIsCapturing(true)}
-            className="text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded px-3 py-1.5 text-zinc-300 transition-colors"
-          >
+          <button type="button" onClick={() => setIsCapturing(true)} className={small}>
             Set key
           </button>
         )}
       </div>
-      {conflict && (
-        <span className="text-xs text-yellow-500">⚠ Key already used by another pad</span>
-      )}
+      {conflict && <span className="text-xs text-preset">Key already used by another control</span>}
     </div>
   )
 }

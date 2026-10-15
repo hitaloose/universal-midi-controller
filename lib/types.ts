@@ -2,6 +2,12 @@ export type MidiMessageType = 'programChange' | 'controlChange' | 'noteOn' | 'no
 
 export type PedalboardType = 'outros' | 'pocketMaster' | 'valetonGp5'
 
+export type BankId = 'A' | 'B' | 'C' | 'D'
+
+export const BANK_IDS: BankId[] = ['A', 'B', 'C', 'D']
+
+export type PadColor = 'amber' | 'mint' | 'blue' | 'violet' | 'coral'
+
 export type MidiMessage = {
   channel: number
   type: MidiMessageType
@@ -25,6 +31,9 @@ export type PresetPad = {
   fxSoloStates: Record<string, boolean>
   fxAliases?: Record<string, string>
   keyBinding?: string
+  /** Missing means bank A (configs saved before banks existed). */
+  bank?: BankId
+  color?: PadColor
 }
 
 export type TapTempoBindings = {
@@ -35,6 +44,10 @@ export type TapTempoBindings = {
 
 export type ControllerConfig = {
   pedalboardType?: PedalboardType
+  defaultChannel?: number
+  /** Setup wizard switches; missing means shown. */
+  showTapDelay?: boolean
+  showLooper?: boolean
   presets: PresetPad[]
   fxPads: FxPad[]
   tapTempoBindings?: TapTempoBindings
