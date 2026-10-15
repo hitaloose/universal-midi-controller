@@ -15,6 +15,7 @@ const STATE_LABELS: Record<LooperState, string> = {
   playing: 'Playing',
   armedOverdub: 'Overdub at loop start…',
   overdubbing: 'Overdub',
+  armedStop: 'Stop at end of bar…',
   stopped: 'Stopped',
   armedPlay: 'Play on next 1…',
 }
@@ -184,7 +185,7 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
               {isDubMode ? (
                 <button
                   onClick={looper.record}
-                  disabled={state === 'stopped' || state === 'armedPlay'}
+                  disabled={state === 'armedStop' || state === 'stopped' || state === 'armedPlay'}
                   className={padClass(state === 'overdubbing', state === 'armedOverdub', 'bg-amber-600')}
                 >
                   <span className="text-lg">⊕</span>
@@ -207,8 +208,8 @@ export function LooperBlock({ looper, config, onChange, sendNow, otherUsedKeys, 
                 onClick={looper.playStop}
                 disabled={state === 'empty' || state === 'recording'}
                 className={padClass(
-                  state === 'playing' || state === 'armedOverdub' || state === 'overdubbing',
-                  state === 'armedPlay',
+                  state === 'playing' || state === 'armedOverdub' || state === 'overdubbing' || state === 'armedStop',
+                  state === 'armedPlay' || state === 'armedStop',
                   'bg-emerald-700',
                 )}
               >

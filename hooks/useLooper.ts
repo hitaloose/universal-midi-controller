@@ -13,6 +13,7 @@ export type LooperState =
   | 'playing'
   | 'armedOverdub'
   | 'overdubbing'
+  | 'armedStop'
   | 'stopped'
   | 'armedPlay'
 
@@ -40,7 +41,7 @@ const CLICK_LEN_SEC = 0.03
 const TAP_TIMEOUT_MS = 3000
 const MAX_TAPS = 4
 
-const LOOP_STATES: LooperState[] = ['recording', 'playing', 'armedOverdub', 'overdubbing', 'stopped', 'armedPlay']
+const LOOP_STATES: LooperState[] = ['recording', 'playing', 'armedOverdub', 'overdubbing', 'armedStop', 'stopped', 'armedPlay']
 
 export function hasRecordedLoop(state: LooperState): boolean {
   return LOOP_STATES.includes(state)
@@ -182,6 +183,9 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
     } else if (m.state === 'overdubbing' && beat === m.endBeat) {
       sendScheduled(cmds.overdubStop, perfTime)
       setMachine({ state: 'playing' }, perfTime)
+    } else if (m.state === 'armedStop' && isDownbeat) {
+      sendScheduled(cmds.stop, perfTime)
+      setMachine({ state: 'stopped' }, perfTime)
     } else if (m.state === 'armedPlay' && isDownbeat) {
       sendScheduled(cmds.play, perfTime)
       setMachine({ state: 'playing', anchorBeat: beat }, perfTime)
@@ -272,7 +276,9 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
   const playStop = useCallback(() => {
     const cmds = configRef.current.commands
     const s = machineRef.current.state
-    if (s === 'playing' || s === 'armedOverdub' || s === 'overdubbing') {
+    // First press stops at the end of the current bar; a second press while armed stops right away.
+    if (s === 'playing' || s === 'armedOverdub' || s === 'overdubbing') setMachine({ state: 'armedStop' })
+    else if (s === 'armedStop') {
       sendImmediate(cmds.stop)
       setMachine({ state: 'stopped' })
     } else if (s === 'stopped') setMachine({ state: 'armedPlay' })
