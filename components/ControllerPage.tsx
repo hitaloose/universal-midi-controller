@@ -62,6 +62,12 @@ export default function ControllerPage() {
   const tapTempo = useTapTempo()
   const { view, setView } = useAppView()
   const importInputRef = useRef<HTMLInputElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+
+  // From md up the page itself is fixed and <main> scrolls, so reset it on view change.
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0)
+  }, [view])
 
   const looperConfig = resolveLooperConfig(config.looper)
   const handleUpdateLooper = useCallback((looper: LooperConfig) => patchConfig({ looper }), [patchConfig])
@@ -210,16 +216,16 @@ export default function ControllerPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-ground text-ink flex flex-col">
+    <div className="min-h-dvh md:h-dvh md:overflow-hidden bg-ground text-ink flex flex-col">
       <TopBar
         setupName={profileOf(config).label}
         connection={output.connection}
         onConnectionClick={() => setView('settings')}
         onPanic={handlePanic}
       />
-      <div className="flex-1 flex items-stretch">
+      <div className="flex-1 flex items-stretch md:min-h-0">
         <NavRail view={view} onChange={setView} hideLooper={!showLooper} />
-        <main className="flex-1 min-w-0 pb-20 md:pb-0">
+        <main ref={mainRef} className="flex-1 min-w-0 pb-20 md:pb-0 md:overflow-y-auto">
           {view === 'perform' && (
             <PerformView
               config={config}

@@ -69,8 +69,8 @@ export function EditView(props: Props) {
   const fxIndex = selectedFx ? config.fxPads.findIndex((f) => f.id === selectedFx.id) : -1
 
   return (
-    <div className="flex min-h-full">
-      <div className="flex-1 min-w-0 p-4 sm:px-7 sm:py-6 flex flex-col gap-6">
+    <div className="flex min-h-full md:h-full">
+      <div className="flex-1 min-w-0 md:overflow-y-auto p-4 sm:px-7 sm:py-6 flex flex-col gap-6">
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-edit/40 bg-edit/8 px-4 py-3">
           <span className="text-xs font-bold tracking-[0.12em] uppercase text-edit">Edit mode</span>
           <span className="hidden sm:inline text-[13px] text-ink-dim">Select a pad to change it. Pads do not send MIDI here.</span>

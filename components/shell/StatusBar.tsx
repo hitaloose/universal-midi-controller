@@ -10,7 +10,7 @@ type Props = { last: LogEntry | null; midiError: string | null }
 
 export function StatusBar({ last, midiError }: Props) {
   return (
-    <footer className="hidden md:flex sticky bottom-0 z-20 items-center gap-4 px-6 py-2.5 border-t border-line-soft bg-bar text-xs">
+    <footer className="hidden md:flex shrink-0 items-center gap-4 px-6 py-2.5 border-t border-line-soft bg-bar text-xs">
       <span className="flex items-center gap-2 text-ink-dim">
         <span className={`w-[7px] h-[7px] rounded-full ${last ? 'bg-fx' : 'bg-ink-mute'}`} />
         Last sent

@@ -20,7 +20,7 @@ export function TopBar({ setupName, connection, onConnectionClick, onPanic }: Pr
         : 'No device'
 
   return (
-    <header className="sticky top-0 z-30 box-border flex items-center gap-3 sm:gap-5 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-line-soft bg-bar">
+    <header className="sticky top-0 z-30 shrink-0 box-border flex items-center gap-3 sm:gap-5 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-line-soft bg-bar">
       <div className="flex items-center gap-3 min-w-0">
         <Logo />
         <div className="flex flex-col leading-tight min-w-0">

@@ -47,7 +47,7 @@ export function NavRail({ view, onChange, hideLooper }: Props) {
   return (
     <nav
       aria-label="Main"
-      className="hidden md:flex sticky top-[69px] h-[calc(100dvh-69px)] box-border shrink-0 w-[76px] flex-col items-center gap-1.5 py-4 border-r border-line-soft bg-bar"
+      className="hidden md:flex box-border shrink-0 overflow-y-auto w-[76px] flex-col items-center gap-1.5 py-4 border-r border-line-soft bg-bar"
     >
       {main.map(link)}
       <div className="flex-1" />
