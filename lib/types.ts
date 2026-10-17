@@ -52,6 +52,7 @@ export type ControllerConfig = {
   fxPads: FxPad[]
   tapTempoBindings?: TapTempoBindings
   looper?: LooperConfig
+  songbook?: SongbookConfig
 }
 
 export type LooperCommands = {
@@ -93,4 +94,29 @@ export type LooperConfig = {
   loopTrimMs: number
   commands: LooperCommands
   bindings: LooperBindings
+}
+
+export type SetlistItem = {
+  songId: string
+  /** Sent when the song comes up; missing keeps whatever preset is active. */
+  presetId?: string
+}
+
+export type Setlist = {
+  id: string
+  name: string
+  items: SetlistItem[]
+}
+
+export type SongbookBindings = {
+  prev?: string
+  next?: string
+  menu?: string
+  confirm?: string
+}
+
+export type SongbookConfig = {
+  setlists: Setlist[]
+  fontSize: number
+  bindings: SongbookBindings
 }

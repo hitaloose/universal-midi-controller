@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { BankId, ControllerConfig, LooperBindings } from '@/lib/types'
+import type { BankId, ControllerConfig, LooperBindings, SongbookBindings } from '@/lib/types'
 import { presetsInBank } from '@/hooks/useController'
 
 type Props = {
@@ -13,6 +13,9 @@ type Props = {
   onDisable: () => void
   looperBindings: LooperBindings
   looperActions: Record<keyof LooperBindings, () => void>
+  /** Only listened to while a setlist is open in the reader; they win over every other key there. */
+  songbookBindings: SongbookBindings | null
+  songbookActions: Record<keyof SongbookBindings, () => void>
   enabled: boolean
 }
 
@@ -26,6 +29,8 @@ export function useKeyboardBindings({
   onDisable,
   looperBindings,
   looperActions,
+  songbookBindings,
+  songbookActions,
   enabled,
 }: Props) {
   useEffect(() => {
@@ -48,6 +53,12 @@ export function useKeyboardBindings({
         .map(([action, code]) => [code!, action])
     )
 
+    const songbookMap = new Map(
+      (Object.entries(songbookBindings ?? {}) as [keyof SongbookBindings, string | undefined][])
+        .filter(([, code]) => code)
+        .map(([action, code]) => [code!, action])
+    )
+
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
       const tag = target.tagName
@@ -57,7 +68,11 @@ export function useKeyboardBindings({
 
       const { code } = e
 
-      if (presetMap.has(code)) {
+      if (songbookMap.has(code)) {
+        e.preventDefault()
+        // A held pedal must turn one page, not race through the song.
+        if (!e.repeat) songbookActions[songbookMap.get(code)!]?.()
+      } else if (presetMap.has(code)) {
         e.preventDefault()
         onPresetPad(presetMap.get(code)!)
       } else if (fxMap.has(code)) {
@@ -81,5 +96,5 @@ export function useKeyboardBindings({
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [config, activeBank, enabled, onPresetPad, onFxPad, onTap, onCycleSubdivision, onDisable, looperBindings, looperActions])
+  }, [config, activeBank, enabled, onPresetPad, onFxPad, onTap, onCycleSubdivision, onDisable, looperBindings, looperActions, songbookBindings, songbookActions])
 }

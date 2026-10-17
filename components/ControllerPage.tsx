@@ -1,19 +1,31 @@
 'use client'
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import { useController } from '@/hooks/useController'
+import { bankOf, useController } from '@/hooks/useController'
 import { useKeyboardBindings } from '@/hooks/useKeyboardBindings'
 import { useTapTempo } from '@/hooks/useTapTempo'
 import { useLooper } from '@/hooks/useLooper'
 import { useOutput } from '@/hooks/useOutput'
 import { useAppView } from '@/hooks/useAppView'
+import { useSongbook } from '@/hooks/useSongbook'
 import { POCKET_MASTER_DELAY_TABLE } from '@/lib/pocketMasterDelayData'
 import { downloadConfig, readConfigFromFile } from '@/lib/storage'
 import { resolveLooperConfig } from '@/lib/looper'
+import { resolveSongbookConfig } from '@/lib/songbook'
 import { buildPanicMessages } from '@/lib/midi'
 import { profileOf } from '@/lib/profiles'
 import { padKeys } from '@/lib/keys'
-import type { ControllerConfig, FxPad, LooperCommands, LooperConfig, MidiMessage, PresetPad, TapTempoBindings } from '@/lib/types'
+import type {
+  ControllerConfig,
+  FxPad,
+  LooperCommands,
+  LooperConfig,
+  MidiMessage,
+  PresetPad,
+  SetlistItem,
+  SongbookConfig,
+  TapTempoBindings,
+} from '@/lib/types'
 import { COMMAND_LABELS } from '@/components/looper/shared'
 import { TopBar } from '@/components/shell/TopBar'
 import { BottomTabs, NavRail } from '@/components/shell/Nav'
@@ -23,6 +35,7 @@ import { EditView } from '@/components/views/EditView'
 import { LooperView } from '@/components/views/LooperView'
 import { MonitorView } from '@/components/views/MonitorView'
 import { SettingsView } from '@/components/views/SettingsView'
+import { SongbookView } from '@/components/views/SongbookView'
 import { SetupWizard } from '@/components/setup/SetupWizard'
 
 const MIDI_MSG_DELAY_MS = 60
@@ -134,6 +147,17 @@ export default function ControllerPage() {
     }
   }
 
+  // A song's preset is only sent when it differs: pressing the active preset again would enter solo mode.
+  const handleEnterSong = (item: SetlistItem) => {
+    const preset = config.presets.find((p) => p.id === item.presetId)
+    if (!preset || preset.id === activePresetId) return
+    setActiveBank(bankOf(preset))
+    handlePresetClick(preset.id)
+  }
+  const songbook = useSongbook({ onEnterSong: handleEnterSong })
+  const songbookConfig = resolveSongbookConfig(config.songbook)
+  const handleUpdateSongbook = (songbook: SongbookConfig) => patchConfig({ songbook })
+
   const handleToggleFx = (id: string) => {
     const fx = config.fxPads.find((f) => f.id === id)
     if (fx) {
@@ -166,8 +190,10 @@ export default function ControllerPage() {
   const allPadKeys = padKeys(config)
   const looperKeys = Object.values(looperConfig.bindings).filter(Boolean) as string[]
   const tapKeys = Object.values(config.tapTempoBindings ?? {}).filter(Boolean) as string[]
-  const tapOtherUsedKeys = new Set([...allPadKeys, ...looperKeys])
-  const looperOtherUsedKeys = new Set([...allPadKeys, ...tapKeys])
+  const songbookKeys = Object.values(songbookConfig.bindings).filter(Boolean) as string[]
+  const tapOtherUsedKeys = new Set([...allPadKeys, ...looperKeys, ...songbookKeys])
+  const looperOtherUsedKeys = new Set([...allPadKeys, ...tapKeys, ...songbookKeys])
+  const songbookOtherUsedKeys = new Set([...allPadKeys, ...tapKeys, ...looperKeys])
 
   const looperActions = useMemo(
     () => ({
@@ -179,6 +205,11 @@ export default function ControllerPage() {
       tap: looper.tap,
     }),
     [looper.toggle, looper.record, looper.playStop, looper.clear, looper.toggleClick, looper.tap],
+  )
+
+  const songbookActions = useMemo(
+    () => ({ prev: songbook.prev, next: songbook.next, menu: songbook.menu, confirm: songbook.confirm }),
+    [songbook.prev, songbook.next, songbook.menu, songbook.confirm],
   )
 
   const hasConfig = config.presets.length > 0 || config.fxPads.length > 0
@@ -194,8 +225,10 @@ export default function ControllerPage() {
     onDisable: tapTempo.disable,
     looperBindings: looperConfig.bindings,
     looperActions,
+    songbookBindings: view === 'songbook' && songbook.run ? songbookConfig.bindings : null,
+    songbookActions,
     // Editing and settings use the keyboard for typing and key capture.
-    enabled: hasConfig && (view === 'perform' || view === 'looper' || view === 'monitor'),
+    enabled: hasConfig && (view === 'perform' || view === 'songbook' || view === 'looper' || view === 'monitor'),
   })
 
   const importInput = (
@@ -267,6 +300,16 @@ export default function ControllerPage() {
               onImport={() => importInputRef.current?.click()}
               onExport={() => downloadConfig(config)}
               onDone={() => setView('perform')}
+            />
+          )}
+          {view === 'songbook' && (
+            <SongbookView
+              songbook={songbook}
+              config={songbookConfig}
+              onChange={handleUpdateSongbook}
+              presets={config.presets}
+              presetControl={{ activeBank, onBankChange: setActiveBank, activePresetId, soloPresetId, onPreset: handlePresetClick }}
+              otherUsedKeys={songbookOtherUsedKeys}
             />
           )}
           {view === 'looper' && (

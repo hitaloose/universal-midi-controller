@@ -31,6 +31,14 @@ export const LooperIcon = (p: IconProps) => (
     <path d="M21 13v2a3 3 0 01-3 3H3" />
   </Icon>
 )
+export const SongbookIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z" />
+    <path d="M4 21V5" />
+    <path d="M14 7v6.5" />
+    <circle cx="12" cy="14" r="2" />
+  </Icon>
+)
 export const MonitorIcon = (p: IconProps) => <Icon {...p}><path d="M3 12h4l3-8 4 16 3-8h4" /></Icon>
 export const SettingsIcon = (p: IconProps) => (
   <Icon {...p}>

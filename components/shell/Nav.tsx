@@ -2,13 +2,14 @@
 
 import type { ComponentType } from 'react'
 import type { AppView } from '@/hooks/useAppView'
-import { EditIcon, LooperIcon, MonitorIcon, PerformIcon, SettingsIcon } from '@/components/ui/icons'
+import { EditIcon, LooperIcon, MonitorIcon, PerformIcon, SettingsIcon, SongbookIcon } from '@/components/ui/icons'
 
 type Item = { view: AppView; label: string; Icon: ComponentType<{ size?: number }> }
 
 const ITEMS: Item[] = [
   { view: 'perform', label: 'Perform', Icon: PerformIcon },
   { view: 'edit', label: 'Edit', Icon: EditIcon },
+  { view: 'songbook', label: 'Songs', Icon: SongbookIcon },
   { view: 'looper', label: 'Looper', Icon: LooperIcon },
   { view: 'monitor', label: 'Monitor', Icon: MonitorIcon },
   { view: 'settings', label: 'Settings', Icon: SettingsIcon },

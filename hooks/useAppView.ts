@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
-export type AppView = 'perform' | 'edit' | 'looper' | 'monitor' | 'settings'
+export type AppView = 'perform' | 'edit' | 'songbook' | 'looper' | 'monitor' | 'settings'
 
-const VIEWS: AppView[] = ['perform', 'edit', 'looper', 'monitor', 'settings']
+const VIEWS: AppView[] = ['perform', 'edit', 'songbook', 'looper', 'monitor', 'settings']
 
 function readHash(): AppView {
   const h = window.location.hash.replace('#', '') as AppView
