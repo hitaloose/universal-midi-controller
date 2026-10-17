@@ -12,6 +12,8 @@ import { ChevronLeft, ChevronRight, CloseIcon } from '@/components/ui/icons'
 const LINE_HEIGHT = 1.45
 const COL_GAP = 40
 const MAX_COLUMNS = 2
+// Monospace runs ~0.6em per character, so a column narrower than this wraps typical lyric lines (~40 chars).
+const MIN_COLUMN_EM = 26
 
 /** A run of lines from one block; blocks only split when they are taller than a column. */
 type Segment = { block: number; from: number; to: number }
@@ -95,7 +97,7 @@ function useLayout(song: Song | undefined, fontSize: number) {
     return () => ro.disconnect()
   }, [])
 
-  const perPage = Math.max(1, Math.min(MAX_COLUMNS, Math.floor((size.w + COL_GAP) / (fontSize * 18 + COL_GAP))))
+  const perPage = Math.max(1, Math.min(MAX_COLUMNS, Math.floor((size.w + COL_GAP) / (fontSize * MIN_COLUMN_EM + COL_GAP))))
   const colWidth = (size.w - (perPage - 1) * COL_GAP) / perPage
   const gap = Math.round(fontSize * 0.8)
 
@@ -110,7 +112,7 @@ function useLayout(song: Song | undefined, fontSize: number) {
     <div
       ref={measureRef}
       aria-hidden="true"
-      className="absolute invisible pointer-events-none left-0 top-0"
+      className="absolute invisible pointer-events-none left-0 top-0 font-mono"
       style={{ width: colWidth, fontSize, lineHeight: LINE_HEIGHT }}
     >
       {song.blocks.map((block, b) => (
@@ -202,7 +204,7 @@ export function SongReader({ songbook, presets, fontSize, onFontSize, bindings, 
             <div ref={areaRef} className="relative h-full overflow-hidden">
               {measurer}
               {song ? (
-                <div className="flex h-full" style={{ gap: COL_GAP, fontSize, lineHeight: LINE_HEIGHT }}>
+                <div className="flex h-full font-mono" style={{ gap: COL_GAP, fontSize, lineHeight: LINE_HEIGHT }}>
                   {(pages[page] ?? []).map((col, c) => (
                     <div key={c} className="flex-1 min-w-0">
                       {col.map((seg, i) => (
