@@ -14,16 +14,10 @@ export function buildMidiBytes(msg: MidiMessage): [number, number, number] {
 
 export function sendMidi(output: MIDIOutput, msg: MidiMessage, timestamp?: number): void {
   const bytes = buildMidiBytes(msg)
-  console.log(
-    `[MIDI OUT] ${output.name} | ${msg.type} ch${msg.channel} data1=${msg.data1} data2=${msg.data2} | bytes=[${bytes.map((b) => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(', ')}]${timestamp !== undefined ? ` | at=${timestamp.toFixed(1)} (in ${(timestamp - performance.now()).toFixed(1)}ms)` : ''}`,
-  )
   output.send(bytes, timestamp)
 }
 
 export function sendSysEx(output: MIDIOutput, bytes: number[]): void {
-  console.log(
-    `[SYSEX OUT] ${output.name} | bytes=[${bytes.map((b) => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(', ')}]`,
-  )
   output.send(bytes)
 }
 

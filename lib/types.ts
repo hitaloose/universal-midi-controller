@@ -89,6 +89,8 @@ export type LooperConfig = {
   clickEnabled: boolean
   clickVolume: number
   latencyCompMs: number
+  /** Shifts the pre-scheduled REC stop to correct a loop that drifts against the click. */
+  loopTrimMs: number
   commands: LooperCommands
   bindings: LooperBindings
 }

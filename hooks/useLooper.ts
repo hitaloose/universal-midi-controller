@@ -30,6 +30,7 @@ type Machine = {
   state: LooperState
   anchorBeat: number // absolute beat index where the loop starts
   endBeat: number // absolute beat index where the current rec/overdub ends
+  recStopSent: boolean // REC stop already handed to the MIDI output together with REC start
 }
 
 // Scheduler: wakes every TICK_MS and schedules everything that falls inside LOOKAHEAD_MS.
@@ -40,6 +41,7 @@ type Machine = {
 const TICK_MS = 25
 const LOOKAHEAD_MS = 150
 const MAX_LATENCY_COMP_MS = 100
+const MAX_LOOP_TRIM_MS = 50
 const CLICK_LEN_SEC = 0.03
 const TAP_TIMEOUT_MS = 3000
 const MAX_TAPS = 4
@@ -53,9 +55,14 @@ export function hasRecordedLoop(state: LooperState): boolean {
 type Props = {
   config: LooperConfig
   onConfigChange: (config: LooperConfig) => void
-  /** Sends `msg` so it reaches the pedalboard at `perfTime` (performance.now() clock). */
-  sendAt: (msg: MidiMessage, perfTime: number) => void
+  /** Sends `msg` so it reaches the pedalboard at `perfTime` (performance.now() clock). `note` goes to the monitor log. */
+  sendAt: (msg: MidiMessage, perfTime: number, note?: string) => void
   sendNow: (msg: MidiMessage) => void
+  /**
+   * The output honours send timestamps itself (Web MIDI over USB). Then REC stop is scheduled
+   * together with REC start, so the loop length never depends on the main thread being on time.
+   */
+  preciseTimestamps: boolean
 }
 
 export type UseLooperReturn = {
@@ -71,7 +78,7 @@ export type UseLooperReturn = {
   subscribeBeat: (listener: BeatListener) => () => void
 }
 
-export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): UseLooperReturn {
+export function useLooper({ config, onConfigChange, sendAt, sendNow, preciseTimestamps }: Props): UseLooperReturn {
   const [state, setState] = useState<LooperState>('off')
 
   // Everything the scheduler reads lives in refs so the audio loop never waits on React.
@@ -79,11 +86,13 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
   const sendAtRef = useRef(sendAt)
   const sendNowRef = useRef(sendNow)
   const onConfigChangeRef = useRef(onConfigChange)
+  const preciseRef = useRef(preciseTimestamps)
   useLayoutEffect(() => {
     configRef.current = config
     sendAtRef.current = sendAt
     sendNowRef.current = sendNow
     onConfigChangeRef.current = onConfigChange
+    preciseRef.current = preciseTimestamps
   })
 
   const ctxRef = useRef<AudioContext | null>(null)
@@ -92,7 +101,8 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
   const nextBeatTimeRef = useRef(0)
   const nextBeatIndexRef = useRef(0)
   const lastSentPerfRef = useRef(0)
-  const machineRef = useRef<Machine>({ state: 'off', anchorBeat: 0, endBeat: 0 })
+  const machineRef = useRef<Machine>({ state: 'off', anchorBeat: 0, endBeat: 0, recStopSent: false })
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
   const uiEpochRef = useRef(0)
   const listenersRef = useRef<Set<BeatListener>>(new Set())
   const tapTimesRef = useRef<number[]>([])
@@ -130,23 +140,48 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
     uiTimeoutsRef.current.add(id)
   }
 
-  const sendScheduled = (msg: MidiMessage, perfTime: number) => {
-    const comp = Math.min(Math.max(configRef.current.latencyCompMs, 0), MAX_LATENCY_COMP_MS)
-    const t = Math.max(performance.now(), perfTime - comp)
+  const sendAtTracked = (msg: MidiMessage, t: number, note?: string) => {
     lastSentPerfRef.current = Math.max(lastSentPerfRef.current, t)
-    sendAtRef.current(msg, t)
+    sendAtRef.current(msg, t, note)
   }
 
-  // Immediate sends must not overtake a command already scheduled in the lookahead window.
-  const sendImmediate = (msg: MidiMessage) => {
+  /** Returns the time the command was actually scheduled for; late sends are flagged in the monitor. */
+  const sendScheduled = (msg: MidiMessage, perfTime: number) => {
+    const comp = Math.min(Math.max(configRef.current.latencyCompMs, 0), MAX_LATENCY_COMP_MS)
     const now = performance.now()
-    if (lastSentPerfRef.current > now) {
-      const t = lastSentPerfRef.current + 1
-      lastSentPerfRef.current = t
-      sendAtRef.current(msg, t)
-    } else {
-      sendNowRef.current(msg)
-    }
+    const late = now - (perfTime - comp)
+    const t = Math.max(now, perfTime - comp)
+    sendAtTracked(msg, t, late > 1 ? `late ${Math.round(late)} ms` : undefined)
+    return t
+  }
+
+  // Scheduled sends can't be cancelled (Chrome has no MIDIOutput.clear()), so an immediate command
+  // goes out now and again after anything still pending; looper commands are idempotent.
+  const sendImmediate = (msg: MidiMessage) => {
+    sendNowRef.current(msg)
+    if (lastSentPerfRef.current > performance.now()) sendAtTracked(msg, lastSentPerfRef.current + 1)
+  }
+
+  const loopTrimMs = () => Math.min(Math.max(configRef.current.loopTrimMs, -MAX_LOOP_TRIM_MS), MAX_LOOP_TRIM_MS)
+
+  // Keeps the screen on while the looper runs; a dimmed screen gets its timers throttled.
+  const requestWakeLock = () => {
+    if (wakeLockRef.current || typeof navigator === 'undefined' || !('wakeLock' in navigator)) return
+    navigator.wakeLock.request('screen').then(
+      (lock) => {
+        if (machineRef.current.state === 'off') lock.release().catch(() => {})
+        else wakeLockRef.current = lock
+        lock.addEventListener('release', () => {
+          if (wakeLockRef.current === lock) wakeLockRef.current = null
+        })
+      },
+      () => {},
+    )
+  }
+
+  const releaseWakeLock = () => {
+    wakeLockRef.current?.release().catch(() => {})
+    wakeLockRef.current = null
   }
 
   const setMachine = (next: Partial<Machine>, uiAt?: number) => {
@@ -192,12 +227,15 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
     const m = machineRef.current
     const isDownbeat = beat % cfg.beatsPerBar === 0
 
-    if (m.state === 'armedRec' && isDownbeat) {
-      sendScheduled(cmds.recStart, perfTime)
-      setMachine({ state: 'recording', anchorBeat: beat, endBeat: beat + loopBeats }, perfTime)
+    // A REC stop from an earlier take may still be queued; recording waits until it has gone out.
+    if (m.state === 'armedRec' && isDownbeat && perfTime > lastSentPerfRef.current) {
+      const start = sendScheduled(cmds.recStart, perfTime)
+      const recStopSent = preciseRef.current
+      if (recStopSent) sendAtTracked(cmds.recStop, start + loopDurationSec(cfg) * 1000 + loopTrimMs())
+      setMachine({ state: 'recording', anchorBeat: beat, endBeat: beat + loopBeats, recStopSent }, perfTime)
     } else if (m.state === 'recording' && beat === m.endBeat) {
-      sendScheduled(cmds.recStop, perfTime)
-      setMachine({ state: 'playing' }, perfTime)
+      if (!m.recStopSent) sendScheduled(cmds.recStop, perfTime + loopTrimMs())
+      setMachine({ state: 'playing', recStopSent: false }, perfTime)
     } else if (m.state === 'armedOverdub' && (beat - m.anchorBeat) % loopBeats === 0) {
       sendScheduled(cmds.overdubStart, perfTime)
       setMachine({ state: 'overdubbing', endBeat: beat + loopBeats }, perfTime)
@@ -242,6 +280,7 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
     uiTimeoutsRef.current.forEach(clearTimeout)
     uiTimeoutsRef.current.clear()
     closeAudio()
+    releaseWakeLock()
   }
 
   // A time-signature change (only allowed without a loop) restarts the bar count on the next beat.
@@ -257,7 +296,17 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
       if (tickRef.current) clearInterval(tickRef.current)
       timeouts.forEach(clearTimeout)
       ctxRef.current?.close()
+      wakeLockRef.current?.release().catch(() => {})
     }
+  }, [])
+
+  // The browser drops the wake lock whenever the page is hidden.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && machineRef.current.state !== 'off') requestWakeLock()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
   // ---- actions ---------------------------------------------------------------
@@ -267,11 +316,12 @@ export function useLooper({ config, onConfigChange, sendAt, sendNow }: Props): U
     if (machineRef.current.state === 'off') {
       // Audio only when the click is on; opened here, inside the user gesture.
       if (configRef.current.clickEnabled) openAudio()
+      // lastSentPerfRef is kept: a REC stop queued before the last power-off may still be pending.
       sendImmediate(configRef.current.commands.on)
       nextBeatIndexRef.current = 0
       nextBeatTimeRef.current = performance.now() + 100
-      lastSentPerfRef.current = 0
-      setMachine({ state: 'empty', anchorBeat: 0, endBeat: 0 })
+      setMachine({ state: 'empty', anchorBeat: 0, endBeat: 0, recStopSent: false })
+      requestWakeLock()
       tickRef.current = setInterval(schedulerTick, TICK_MS)
     } else {
       stopClock()

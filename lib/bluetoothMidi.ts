@@ -19,9 +19,6 @@ export function writeBleMidi(
   msg: MidiMessage,
 ): Promise<void> {
   const packet = buildBleMidiPacket(Array.from(buildMidiBytes(msg)))
-  console.log(
-    `[BLE MIDI OUT] ${msg.type} ch${msg.channel} data1=${msg.data1} data2=${msg.data2} | packet=[${Array.from(packet).map((b) => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(', ')}]`,
-  )
   return char.writeValueWithoutResponse(packet)
 }
 
@@ -30,8 +27,5 @@ export function writeBleMidiRaw(
   bytes: number[],
 ): Promise<void> {
   const packet = buildBleMidiPacket(bytes)
-  console.log(
-    `[BLE SYSEX OUT] packet=[${Array.from(packet).map((b) => '0x' + b.toString(16).toUpperCase().padStart(2, '0')).join(', ')}]`,
-  )
   return char.writeValueWithoutResponse(packet)
 }

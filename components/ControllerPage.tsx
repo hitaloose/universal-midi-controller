@@ -74,8 +74,12 @@ export default function ControllerPage() {
   const looper = useLooper({
     config: looperConfig,
     onConfigChange: handleUpdateLooper,
-    sendAt: (msg, perfTime) => output.sendAt(msg, perfTime, looperSource(msg, looperConfig.commands)),
+    sendAt: (msg, perfTime, note) => {
+      const source = looperSource(msg, looperConfig.commands)
+      output.sendAt(msg, perfTime, note ? `${source} · ${note}` : source)
+    },
     sendNow: (msg) => send(msg, looperSource(msg, looperConfig.commands)),
+    preciseTimestamps: output.connection.kind === 'usb',
   })
 
   const sendTapDelay = (source: string) => {

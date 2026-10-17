@@ -95,7 +95,7 @@ function LooperSettingsModal({
         )}
 
         {tab === 'timing' && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
               <FieldLabel>Max recording (s)</FieldLabel>
               <input
@@ -116,6 +116,18 @@ function LooperSettingsModal({
                 onChange={(e) => onChange({ ...config, latencyCompMs: clampNum(0, 100, e.target.value) })}
                 className={monoInputClass}
               />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <FieldLabel>Loop trim (ms)</FieldLabel>
+              <input
+                type="number"
+                min={-50}
+                max={50}
+                value={config.loopTrimMs}
+                onChange={(e) => onChange({ ...config, loopTrimMs: clampNum(-50, 50, e.target.value) })}
+                className={monoInputClass}
+              />
+              <Hint>Loop falls behind the click: go negative. Runs ahead: go positive.</Hint>
             </label>
             <label className="flex flex-col gap-1.5">
               <FieldLabel>

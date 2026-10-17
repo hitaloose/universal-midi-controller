@@ -35,6 +35,7 @@ export const DEFAULT_LOOPER_CONFIG: LooperConfig = {
   clickEnabled: true,
   clickVolume: 0.6,
   latencyCompMs: 0,
+  loopTrimMs: 0,
   commands: POCKET_MASTER_LOOPER_COMMANDS,
   bindings: {},
 }
