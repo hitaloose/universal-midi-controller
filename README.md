@@ -1,59 +1,44 @@
 # Universal MIDI Controller
 
-Controlador MIDI universal para pedaleiras, rodando direto no navegador via Web MIDI API.
+Turn a phone, tablet or laptop into a MIDI foot controller for your pedalboard, straight from the browser — no app, no driver, nothing to install.
 
-**[Acessar o app →](https://hitaloose.github.io/universal-midi-controller/)**
+**[Open the app →](https://hitaloose.github.io/universal-midi-controller/)** (Chrome or Edge)
 
----
+## Features
 
-## O que é
+- **Preset pads** — each one sends a MIDI message and sets which FX start on or off
+- **FX pads** — toggles that send their own on/off messages; double-click an active preset for **solo mode**
+- **Banks** and layout templates (Starter, Compact, Big rig), with an edit mode to add, move and rename pads
+- **Tap tempo**, sent to the device's delay
+- **Tempo-synced looper** with metronome click: record and overdub stop at the end of the bar, with latency compensation and loop trim
+- **Songbook** — setlists and a paginated chord-sheet reader you can turn with a Bluetooth page-turner pedal, next to your preset pads
+- **USB or Bluetooth MIDI**, a **MIDI monitor**, and keyboard bindings for every action (so a pedal that sends keys works too)
+- **Setup wizard** and **export / import** of the whole configuration as JSON
+- **PWA** — install it on the home screen and use it offline
 
-Uma interface web que transforma o navegador num controlador MIDI. Você configura pads de Preset e pads de FX, conecta qualquer dispositivo MIDI via USB e dispara mensagens MIDI sem instalar nada.
+## Supported devices
 
-Funciona como PWA — pode ser instalado na tela inicial do computador ou celular para uso offline.
+Ready-made profiles for the **Sonicake Pocket Master** and the **Valeton GP-5** (FX names, CC numbers, looper commands), plus a generic profile for any device that takes Program Change and Control Change messages. The MIDI tables used are in [`docs/`](docs/).
 
-## Funcionalidades
+## Stack
 
-- **Pads de Preset** — cada preset envia uma mensagem MIDI e define o estado inicial dos FX
-- **Pads de FX** — botões toggle que enviam mensagens MIDI On/Off independentes
-- **Modo Solo** — clique duas vezes num preset ativo para isolar os FX daquele preset
-- **Seletor de dispositivo MIDI** — escolha entre todos os outputs MIDI conectados ao sistema
-- **Exportar / Importar** — salva e carrega a configuração como arquivo JSON
-- **PWA** — instalável, funciona offline após o primeiro carregamento
+[Next.js 16](https://nextjs.org/) (App Router, static export) · [React 19](https://react.dev/) · TypeScript · [Tailwind CSS v4](https://tailwindcss.com/) · [Web MIDI API](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API) · Web Bluetooth · Service Worker
 
-## Tecnologias
-
-- [Next.js 16](https://nextjs.org/) com App Router e exportação estática
-- [React 19](https://react.dev/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Tailwind CSS v4](https://tailwindcss.com/)
-- [Web MIDI API](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API)
-
-## Rodando localmente
+## Running locally
 
 ```bash
 npm install
-npm run dev
+npm run dev     # http://localhost:3000/universal-midi-controller
 ```
 
-Acesse `http://localhost:3000/universal-midi-controller`.
+`npm run build` writes the static site to `out/`.
 
-> **Requisito:** a Web MIDI API exige um navegador com suporte (Chrome/Edge) e, em alguns sistemas, permissão explícita para acesso a dispositivos MIDI.
-
-## Build
-
-```bash
-npm run build   # gera a pasta out/ com o site estático
-```
-
-## Agradecimentos
-
-O suporte à **Sonicake Pocket Master** (tap delay via SysEx) só foi possível graças ao trabalho de engenharia reversa documentado no repositório [**suckyble/PocketEdit**](https://github.com/suckyble/PocketEdit), que mapeou os comandos SysEx usados pelo app oficial para definir o tempo de delay.
+> Web MIDI needs a supporting browser (Chrome/Edge) and, on some systems, explicit permission to access MIDI devices.
 
 ## Deploy
 
-O projeto é publicado automaticamente no GitHub Pages via GitHub Actions a cada push na branch `main`.
+Every push to `main` publishes to GitHub Pages through GitHub Actions. To deploy a fork, go to **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**. Bump the cache version in `public/sw.js` with each release so installed PWAs pick up the new build.
 
-Para ativar o deploy num fork:
-1. Vá em **Settings → Pages** do repositório
-2. Em **Build and deployment → Source**, selecione **GitHub Actions**
+## Acknowledgements
+
+Tap-delay support for the **Sonicake Pocket Master** (via SysEx) was only possible thanks to the reverse engineering documented in [**suckyble/PocketEdit**](https://github.com/suckyble/PocketEdit), which mapped the SysEx commands the official app uses to set the delay time.
