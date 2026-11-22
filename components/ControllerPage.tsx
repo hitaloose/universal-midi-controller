@@ -3,18 +3,18 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { bankOf, useController } from '@/hooks/useController'
 import { useKeyboardBindings } from '@/hooks/useKeyboardBindings'
-import { useTapTempo } from '@/hooks/useTapTempo'
+import { calcDelayMs, useTapTempo, type Subdivision } from '@/hooks/useTapTempo'
 import { useLooper } from '@/hooks/useLooper'
 import { useOutput } from '@/hooks/useOutput'
 import { useAppView } from '@/hooks/useAppView'
 import { useSongbook } from '@/hooks/useSongbook'
-import { POCKET_MASTER_DELAY_TABLE } from '@/lib/pocketMasterDelayData'
+import { POCKET_MASTER_DELAY_TABLE, findClosestDelayMs } from '@/lib/pocketMasterDelayData'
 import { downloadConfig, readConfigFromFile } from '@/lib/storage'
 import { resolveLooperConfig } from '@/lib/looper'
 import { resolveSongbookConfig } from '@/lib/songbook'
 import { buildPanicMessages } from '@/lib/midi'
 import { profileOf } from '@/lib/profiles'
-import { cfwTempoForDelay, cfwTempoMessages } from '@/lib/pocketMasterCfwMidi'
+import { CFW_TAP_WINDOW_MS, cfwBpm, cfwDelayMs, cfwTempoMessages } from '@/lib/pocketMasterCfwMidi'
 import { padKeys } from '@/lib/keys'
 import type {
   ControllerConfig,
@@ -23,6 +23,7 @@ import type {
   LooperConfig,
   MidiMessage,
   PresetPad,
+  PresetTempo,
   SetlistItem,
   SongbookConfig,
   TapTempoBindings,
@@ -40,6 +41,8 @@ import { SongbookView } from '@/components/views/SongbookView'
 import { SetupWizard } from '@/components/setup/SetupWizard'
 
 const MIDI_MSG_DELAY_MS = 60
+
+const SUBDIVISION_LABEL: Record<Subdivision, string> = { eighth: '1/8', dottedEighth: '1/8.', quarter: '1/4' }
 
 // Pocket Master "request current preset state" (command 0201020401).
 // Sending this puts the device into editor mode, after which it accepts
@@ -97,42 +100,104 @@ export default function ControllerPage() {
   })
 
   const tapDelayMode = profileOf(config).tapDelay
-  const cfwTempo = tapDelayMode === 'tempoCc' && tapTempo.delayMs !== null ? cfwTempoForDelay(tapTempo.delayMs) : null
-  /** Delay time the pedal will actually get, for the log and to resend when it changes. */
-  const tapDelayMs = tapDelayMode === 'tempoCc' ? (cfwTempo?.ms ?? null) : tapDelayMode === 'sysex' ? tapTempo.closestMs : null
+  /** Delay time the pedal ends up with for a tempo. */
+  const delayMsFor = (t: PresetTempo) =>
+    tapDelayMode === 'tempoCc'
+      ? cfwDelayMs(t.bpm, t.subdivision)
+      : tapDelayMode === 'sysex'
+        ? findClosestDelayMs(calcDelayMs(t.bpm, t.subdivision))
+        : null
+  const currentTempo: PresetTempo | null =
+    tapTempo.isEnabled && tapTempo.bpm !== null ? { bpm: tapTempo.bpm, subdivision: tapTempo.subdivision } : null
+  const tempoKey = currentTempo ? `${currentTempo.bpm}:${currentTempo.subdivision}` : null
+  /** Last tempo sent to the pedal, so a preset load is not sent twice. */
+  const sentTempoKeyRef = useRef<string | null>(null)
 
-  const sendTapDelay = () => {
-    const source = `Tap delay ${tapDelayMs} ms`
-    if (tapDelayMode === 'tempoCc') {
-      if (!cfwTempo) return null
-      const msgs = cfwTempoMessages(cfwTempo.bpm, config.defaultChannel ?? 1)
-      return () => msgs.forEach((m, i) => setTimeout(() => send(m, `${source} (${cfwTempo.bpm} BPM)`), i * MIDI_MSG_DELAY_MS))
-    }
-    if (tapDelayMode !== 'sysex' || tapTempo.closestMs === null) return null
-    const bytes = POCKET_MASTER_DELAY_TABLE[tapTempo.closestMs]
-    // Table entries include a 2-byte BLE MIDI framing header from capture; strip it
-    // so both USB (output.send) and BLE (writeBleMidiRaw) receive plain SysEx [0xF0…0xF7]
-    return bytes ? () => sendRaw(bytes.slice(2), source) : null
+  // CFW: the note CC also counts as a tap, so it is only sent when the pedal's note may differ
+  // (subdivision changed, tap delay just turned on, new preset) and never twice inside the tap window.
+  const cfwNoteRef = useRef<{ sent: Subdivision | null; at: number }>({ sent: null, at: -Infinity })
+  const cfwRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearCfwRetry = () => {
+    if (cfwRetryRef.current) clearTimeout(cfwRetryRef.current)
+    cfwRetryRef.current = null
   }
 
-  const tapTempoSendRef = useRef<() => void>(() => {})
-  useLayoutEffect(() => {
-    tapTempoSendRef.current = () => {
-      if (!tapTempo.isEnabled) return
-      const fire = sendTapDelay()
-      if (!fire) return
-      if (tapDelayMode !== 'sysex') return fire()
+  /** Sends a tempo to the pedal. `afterPreset`: a preset change was just sent. */
+  const pushTempo = (t: PresetTempo, afterPreset = false) => {
+    sentTempoKeyRef.current = `${t.bpm}:${t.subdivision}`
+    const ms = delayMsFor(t)
+    if (tapDelayMode === 'tempoCc') {
+      clearCfwRetry()
+      const wait = cfwNoteRef.current.at + CFW_TAP_WINDOW_MS - performance.now()
+      const noteDue = cfwNoteRef.current.sent !== t.subdivision
+      // Too soon for another note: send the tempo now and the note once the window has passed.
+      if (noteDue && wait > 0) cfwRetryRef.current = setTimeout(() => pushTempoRef.current(), wait + 50)
+      const withNote = noteDue && wait <= 0
+      if (withNote) cfwNoteRef.current = { sent: t.subdivision, at: performance.now() }
+      const source = `Tap delay ${ms} ms (${cfwBpm(t.bpm)} BPM${withNote ? `, ${SUBDIVISION_LABEL[t.subdivision]}` : ''})`
+      cfwTempoMessages(t.bpm, withNote ? t.subdivision : null, config.defaultChannel ?? 1).forEach((m, i) =>
+        setTimeout(() => send(m, source), i * MIDI_MSG_DELAY_MS),
+      )
+    } else if (tapDelayMode === 'sysex' && ms !== null) {
+      const bytes = POCKET_MASTER_DELAY_TABLE[ms]
+      if (!bytes) return
+      // Table entries include a 2-byte BLE MIDI framing header from capture; strip it
+      // so both USB (output.send) and BLE (writeBleMidiRaw) receive plain SysEx [0xF0…0xF7]
+      const fire = () => sendRaw(bytes.slice(2), `Tap delay ${ms} ms`)
+      if (afterPreset) return fire()
       // Prime the device into editor mode, then send delay time 100ms later
       sendRaw(PM_REQUEST_PRESET_STATE, 'Tap delay: editor mode')
       setTimeout(fire, 100)
     }
+  }
+
+  /** Resends whatever tempo is current (CFW note retry). */
+  const pushTempoRef = useRef<() => void>(() => {})
+  useLayoutEffect(() => {
+    pushTempoRef.current = () => {
+      if (currentTempo) pushTempo(currentTempo)
+    }
   })
 
   useEffect(() => {
-    if (!tapTempo.isEnabled || tapDelayMs === null) return
-    const timer = setTimeout(() => tapTempoSendRef.current(), 500)
+    if (tempoKey === null) {
+      // Turning tap delay back on must resend the note: the pedal may have changed meanwhile.
+      sentTempoKeyRef.current = null
+      cfwNoteRef.current = { ...cfwNoteRef.current, sent: null }
+      clearCfwRetry()
+      return
+    }
+    if (tempoKey === sentTempoKeyRef.current) return
+    const timer = setTimeout(() => {
+      if (tempoKey !== sentTempoKeyRef.current) pushTempoRef.current()
+    }, 500)
     return () => clearTimeout(timer)
-  }, [tapTempo.isEnabled, tapDelayMs])
+  }, [tempoKey])
+
+  // Taps, subdivision changes and "turn off" are kept in the active preset; loading a preset is not.
+  const tempoEditedRef = useRef(false)
+  const editTempo = <A extends unknown[]>(fn: (...args: A) => void) => (...args: A) => {
+    tempoEditedRef.current = true
+    fn(...args)
+  }
+  const tapControls = {
+    ...tapTempo,
+    tap: editTempo(tapTempo.tap),
+    cycleSubdivision: editTempo(tapTempo.cycleSubdivision),
+    setSubdivision: editTempo(tapTempo.setSubdivision),
+    disable: editTempo(tapTempo.disable),
+  }
+  useEffect(() => {
+    if (!tempoEditedRef.current || !activePresetId || tapDelayMode === null) return
+    tempoEditedRef.current = false
+    const preset = config.presets.find((p) => p.id === activePresetId)
+    if (!preset) return
+    const tempo = currentTempo ?? undefined
+    if (JSON.stringify(preset.tempo) === JSON.stringify(tempo)) return
+    patchConfig({ presets: config.presets.map((p) => (p.id === preset.id ? { ...p, tempo } : p)) })
+    // Only the tempo key matters here: config is read when it changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tempoKey])
 
   const fxName = (fx: FxPad) => config.presets.find((p) => p.id === activePresetId)?.fxAliases?.[fx.id] || fx.name
 
@@ -153,9 +218,16 @@ export default function ControllerPage() {
       const preset = config.presets.find((p) => p.id === id)
       if (preset) send(preset.midi, `Preset ${preset.name}`)
       activatePreset(id)
-      if (tapTempo.isEnabled) {
-        const fire = sendTapDelay()
-        if (fire) setTimeout(fire, MIDI_MSG_DELAY_MS)
+      if (preset && tapDelayMode !== null) {
+        // The pedal now plays the preset's own tempo and note; the app's copy (if any) replaces them.
+        tempoEditedRef.current = false
+        cfwNoteRef.current = { ...cfwNoteRef.current, sent: null }
+        tapTempo.load(preset.tempo ?? null)
+        const tempo = preset.tempo
+        if (tempo) {
+          sentTempoKeyRef.current = `${tempo.bpm}:${tempo.subdivision}`
+          setTimeout(() => pushTempo(tempo, true), MIDI_MSG_DELAY_MS)
+        }
       }
     }
   }
@@ -233,9 +305,9 @@ export default function ControllerPage() {
     activeBank,
     onPresetPad: handlePresetClick,
     onFxPad: handleToggleFx,
-    onTap: tapTempo.tap,
-    onCycleSubdivision: tapTempo.cycleSubdivision,
-    onDisable: tapTempo.disable,
+    onTap: tapControls.tap,
+    onCycleSubdivision: tapControls.cycleSubdivision,
+    onDisable: tapControls.disable,
     looperBindings: looperConfig.bindings,
     looperActions,
     songbookBindings: view === 'songbook' && songbook.run ? songbookConfig.bindings : null,
@@ -286,7 +358,7 @@ export default function ControllerPage() {
               fxStates={fxStates}
               onPreset={handlePresetClick}
               onFx={handleToggleFx}
-              tapTempo={tapTempo}
+              tapTempo={tapControls}
               onUpdateTapBindings={handleUpdateTapBindings}
               tapOtherUsedKeys={tapOtherUsedKeys}
               looper={looper}

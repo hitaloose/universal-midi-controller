@@ -3,12 +3,13 @@
 import { useCallback, useState } from 'react'
 import { findClosestDelayMs } from '@/lib/pocketMasterDelayData'
 import { computeBpmFromTaps } from '@/lib/utils'
+import type { PresetTempo, Subdivision } from '@/lib/types'
 
-export type Subdivision = 'eighth' | 'dottedEighth' | 'quarter'
+export type { Subdivision }
 
 const SUBDIVISION_CYCLE: Subdivision[] = ['eighth', 'dottedEighth', 'quarter']
 
-function calcDelayMs(bpm: number, subdivision: Subdivision): number {
+export function calcDelayMs(bpm: number, subdivision: Subdivision): number {
   const quarter = 60000 / bpm
   if (subdivision === 'eighth') return quarter / 2
   if (subdivision === 'dottedEighth') return quarter * 0.75
@@ -28,6 +29,8 @@ type UseTapTempoReturn = {
   cycleSubdivision: () => void
   setSubdivision: (s: Subdivision) => void
   disable: () => void
+  /** Takes a preset's tempo, or turns tap delay off for a preset without one. */
+  load: (tempo: PresetTempo | null) => void
 }
 
 export function useTapTempo(): UseTapTempoReturn {
@@ -63,5 +66,12 @@ export function useTapTempo(): UseTapTempoReturn {
     setTapTimes([])
   }, [])
 
-  return { isEnabled, bpm, subdivision, delayMs, closestMs, tap, cycleSubdivision, setSubdivision, disable }
+  const load = useCallback((tempo: PresetTempo | null) => {
+    setTapTimes([])
+    setIsEnabled(tempo !== null)
+    setBpm(tempo?.bpm ?? null)
+    if (tempo) setSubdivision(tempo.subdivision)
+  }, [])
+
+  return { isEnabled, bpm, subdivision, delayMs, closestMs, tap, cycleSubdivision, setSubdivision, disable, load }
 }

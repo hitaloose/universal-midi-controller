@@ -6,6 +6,14 @@ export type BankId = 'A' | 'B' | 'C' | 'D'
 
 export const BANK_IDS: BankId[] = ['A', 'B', 'C', 'D']
 
+export type Subdivision = 'eighth' | 'dottedEighth' | 'quarter'
+
+/** Tap delay tempo kept with a preset and sent to the pedal when the preset is selected. */
+export type PresetTempo = {
+  bpm: number
+  subdivision: Subdivision
+}
+
 export type PadColor = 'amber' | 'mint' | 'blue' | 'violet' | 'coral'
 
 export type MidiMessage = {
@@ -34,6 +42,8 @@ export type PresetPad = {
   /** Missing means bank A (configs saved before banks existed). */
   bank?: BankId
   color?: PadColor
+  /** Missing: the app sends no tempo and the pedal keeps the preset's own. */
+  tempo?: PresetTempo
 }
 
 export type TapTempoBindings = {

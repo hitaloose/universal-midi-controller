@@ -25,7 +25,8 @@ Ready-made profiles for the **Sonicake Pocket Master**, the **Pocket Master CFW*
 For a Pocket Master running the [**Pocket Master CFW**](https://pocketmaster-cfw.guitar-training-generator.com/#top) custom firmware, with the pedal's MIDI map left on **Stock** (Settings → MIDI → MIDI MAP). It follows the [CFW MIDI guide](https://pocketmaster-cfw.guitar-training-generator.com/midi/):
 
 - Presets and block on/off use the same CCs as the stock firmware, plus shortcuts for **Freeze** (CC 114), **Global EQ** (CC 86), **Drum play** (CC 93) and **DLY Sync** (CC 87)
-- **Tap delay** turns the delay's Sync on and sets the tempo with CC 68/69, so no SysEx is needed. The subdivision is folded into the BPM, so leave the delay note at **1/4** (the Sync default). The CFW accepts 40–260 BPM, which gives delay times from 231 to 1500 ms
+- **Tap delay** turns the delay's Sync on, sets the note (1/4, dotted 1/8 or 1/8 via CC 27/28/29) and sends the tapped tempo with CC 68/69, so no SysEx is needed. The CFW accepts 40–260 BPM. The note CC also counts as a tap on the pedal, so it is only sent when the subdivision changes, when tap delay is turned on or after a preset change, and never twice within 2 s
+- **Tempo per preset** — the CFW keeps a BPM and delay note in each preset but can't report them over MIDI, so the app keeps its own copy per preset pad. Tapping (or changing the subdivision) while a preset is active stores the tempo in it, and selecting the preset sends it again. A preset without a stored tempo sends nothing, so the pedal plays the tempo saved in it. You can also set or clear the tempo in the preset inspector. Values sent over MIDI mark the pedal's preset as edited (`*`); save it on the pedal if you want the pedal to keep them on its own
 
 ## Stack
 

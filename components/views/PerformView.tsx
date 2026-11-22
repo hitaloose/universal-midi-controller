@@ -6,7 +6,7 @@ import type { UseLooperReturn } from '@/hooks/useLooper'
 import type { useTapTempo } from '@/hooks/useTapTempo'
 import { presetsInBank } from '@/hooks/useController'
 import { describePresetMidi, profileOf } from '@/lib/profiles'
-import { cfwTempoForDelay } from '@/lib/pocketMasterCfwMidi'
+import { cfwDelayMs } from '@/lib/pocketMasterCfwMidi'
 import { PresetPad } from '@/components/PresetPad'
 import { FxPad } from '@/components/FxPad'
 import { BankBar } from '@/components/perform/BankBar'
@@ -52,7 +52,7 @@ export function PerformView(props: Props) {
       delayMs={props.tapTempo.delayMs}
       closestMs={
         profile.tapDelay === 'tempoCc'
-          ? props.tapTempo.delayMs !== null ? cfwTempoForDelay(props.tapTempo.delayMs).ms : null
+          ? props.tapTempo.bpm !== null ? cfwDelayMs(props.tapTempo.bpm, props.tapTempo.subdivision) : null
           : props.tapTempo.closestMs
       }
       deviceLabel={profile.label}

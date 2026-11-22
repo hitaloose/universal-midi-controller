@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { BankId, FxPad, MidiMessage, PresetPad } from '@/lib/types'
+import type { BankId, FxPad, MidiMessage, PresetPad, Subdivision } from '@/lib/types'
 import { BANK_IDS } from '@/lib/types'
 import type { PedalboardProfile } from '@/lib/profiles'
 import { PAD_COLORS, padColor } from '@/lib/padColors'
@@ -10,6 +10,8 @@ import { MidiFields } from '@/components/MidiFields'
 import { FieldLabel, Hint, inputClass } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Segmented } from '@/components/ui/Segmented'
+import { Stepper } from '@/components/ui/Stepper'
+import { CFW_MAX_BPM, CFW_MIN_BPM } from '@/lib/pocketMasterCfwMidi'
 import { ChevronLeft, ChevronRight, CloseIcon, CopyIcon } from '@/components/ui/icons'
 import { describeMidi } from '@/lib/profiles'
 
@@ -30,6 +32,12 @@ type Props = {
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
+
+const TEMPO_SUBDIVISIONS: { value: Subdivision; label: string }[] = [
+  { value: 'eighth', label: '1/8' },
+  { value: 'dottedEighth', label: 'Dotted' },
+  { value: 'quarter', label: '1/4' },
+]
 
 export function PresetInspector(props: Props) {
   const { preset, fxPads, profile } = props
@@ -135,6 +143,43 @@ export function PresetInspector(props: Props) {
             {presetNumber !== null ? ` (${profile.formatPreset(presetNumber)})` : ''}.
           </Hint>
         </div>
+
+        {profile.tapDelay !== null && (
+          <div className="flex flex-col gap-2">
+            <FieldLabel>Delay tempo</FieldLabel>
+            {draft.tempo ? (
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Stepper
+                    label="BPM"
+                    value={draft.tempo.bpm}
+                    min={CFW_MIN_BPM}
+                    max={CFW_MAX_BPM}
+                    onChange={(bpm) => set({ tempo: { ...draft.tempo!, bpm } })}
+                  />
+                  <span className="text-xs text-ink-dim">BPM</span>
+                  <Segmented<Subdivision>
+                    label="Subdivision"
+                    size="sm"
+                    options={TEMPO_SUBDIVISIONS}
+                    value={draft.tempo.subdivision}
+                    onChange={(subdivision) => set({ tempo: { ...draft.tempo!, subdivision } })}
+                  />
+                  <div className="flex-1" />
+                  <Button size="sm" onClick={() => set({ tempo: undefined })}>Clear</Button>
+                </div>
+                <Hint>Sent with the preset. Tapping while this preset is active updates it.</Hint>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Button size="sm" onClick={() => set({ tempo: { bpm: 120, subdivision: 'eighth' } })}>Set tempo</Button>
+                </div>
+                <Hint>Not set: the pedal keeps the preset&apos;s own tempo. Tap with this preset active to set it.</Hint>
+              </>
+            )}
+          </div>
+        )}
 
         {fxPads.length > 0 && (
           <div className="flex flex-col gap-2">
