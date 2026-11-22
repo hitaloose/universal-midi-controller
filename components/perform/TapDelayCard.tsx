@@ -22,6 +22,8 @@ type Props = {
   subdivision: Subdivision
   delayMs: number | null
   closestMs: number | null
+  /** Pedal name shown next to the title. */
+  deviceLabel: string
   onTap: () => void
   onSetSubdivision: (s: Subdivision) => void
   onDisable: () => void
@@ -110,7 +112,7 @@ export function TapDelayCard(props: Props) {
     <Card label="Tap delay">
       <div className="flex items-center gap-2.5 min-w-0">
         <SectionTitle className="whitespace-nowrap shrink-0">Tap delay</SectionTitle>
-        <span className="text-xs text-ink-dim whitespace-nowrap truncate min-w-0">Pocket Master</span>
+        <span className="text-xs text-ink-dim whitespace-nowrap truncate min-w-0">{props.deviceLabel}</span>
         <div className="flex-1" />
         <span className="shrink-0 whitespace-nowrap">
           {isEnabled ? <StatusChip tone="mint">ACTIVE</StatusChip> : <StatusChip tone="dim">OFF</StatusChip>}

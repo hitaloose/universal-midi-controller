@@ -1,5 +1,6 @@
 import type { BankId, ControllerConfig, FxPad, MidiMessage, PedalboardType, PresetPad } from './types'
 import { POCKET_MASTER_FX_OPTIONS, POCKET_MASTER_PRESET_CC } from './pocketMasterMidi'
+import { POCKET_MASTER_CFW_FX_OPTIONS } from './pocketMasterCfwMidi'
 import { VALETON_GP5_FX_OPTIONS, VALETON_GP5_PATCH_CC } from './valetonGp5Midi'
 import { makeId } from './utils'
 
@@ -20,26 +21,49 @@ export type PedalboardProfile = {
   fxOptions: FxOption[]
   /** Order the setup wizard uses to fill FX pads. */
   defaultFx: number[]
-  hasTapDelay: boolean
+  /** How the tap delay block reaches the pedal: SysEx delay time, CC tempo (CFW), or not at all. */
+  tapDelay: 'sysex' | 'tempoCc' | null
+  /** Presets split into P01–P50 / F01–F50 banks (numbers 1–50 / 51–100). */
+  pfBanks: boolean
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
+
+// Stock firmware and CFW "Stock" map select presets the same way.
+const POCKET_MASTER_PRESETS = {
+  presetLabel: 'Pocket Master preset',
+  presetRange: [1, 100] as [number, number],
+  presetMidi: (n: number, channel: number): MidiMessage => ({
+    channel,
+    type: 'controlChange',
+    data1: POCKET_MASTER_PRESET_CC,
+    data2: n,
+  }),
+  presetNumber: (m: MidiMessage) =>
+    m.type === 'controlChange' && m.data1 === POCKET_MASTER_PRESET_CC && m.data2 >= 1 && m.data2 <= 100 ? m.data2 : null,
+  // 1–50 → P01–P50, 51–100 → F01–F50
+  formatPreset: (n: number) => (n <= 50 ? `P${pad2(n)}` : `F${pad2(n - 50)}`),
+  pfBanks: true,
+}
 
 export const PROFILES: Record<PedalboardType, PedalboardProfile> = {
   pocketMaster: {
     type: 'pocketMaster',
     label: 'Sonicake Pocket Master',
     features: ['Presets 1–100', 'FX shortcuts', 'Tap delay via SysEx', 'Looper'],
-    presetLabel: 'Pocket Master preset',
-    presetRange: [1, 100],
-    presetMidi: (n, channel) => ({ channel, type: 'controlChange', data1: POCKET_MASTER_PRESET_CC, data2: n }),
-    presetNumber: (m) =>
-      m.type === 'controlChange' && m.data1 === POCKET_MASTER_PRESET_CC && m.data2 >= 1 && m.data2 <= 100 ? m.data2 : null,
-    // 1–50 → P01–P50, 51–100 → F01–F50
-    formatPreset: (n) => (n <= 50 ? `P${pad2(n)}` : `F${pad2(n - 50)}`),
+    ...POCKET_MASTER_PRESETS,
     fxOptions: POCKET_MASTER_FX_OPTIONS,
     defaultFx: [44, 45, 49, 50, 51, 43, 46, 48, 47, 58, 92],
-    hasTapDelay: true,
+    tapDelay: 'sysex',
+  },
+  pocketMasterCfw: {
+    type: 'pocketMasterCfw',
+    label: 'Pocket Master CFW',
+    features: ['Presets 1–100', 'FX, Freeze and Global EQ', 'Tap tempo via CC 68/69', 'Looper'],
+    ...POCKET_MASTER_PRESETS,
+    fxOptions: POCKET_MASTER_CFW_FX_OPTIONS,
+    defaultFx: [44, 45, 49, 50, 51, 43, 46, 48, 47, 114, 58, 92],
+    tapDelay: 'tempoCc',
   },
   valetonGp5: {
     type: 'valetonGp5',
@@ -53,7 +77,8 @@ export const PROFILES: Record<PedalboardType, PedalboardProfile> = {
     formatPreset: (n) => pad2(n),
     fxOptions: VALETON_GP5_FX_OPTIONS,
     defaultFx: [49, 50, 55, 56, 57, 48, 52, 53, 54, 51, 58],
-    hasTapDelay: false,
+    tapDelay: null,
+    pfBanks: false,
   },
   outros: {
     type: 'outros',
@@ -66,11 +91,12 @@ export const PROFILES: Record<PedalboardType, PedalboardProfile> = {
     formatPreset: (n) => `PC ${pad2(n)}`,
     fxOptions: [],
     defaultFx: [],
-    hasTapDelay: false,
+    tapDelay: null,
+    pfBanks: false,
   },
 }
 
-export const PROFILE_ORDER: PedalboardType[] = ['pocketMaster', 'valetonGp5', 'outros']
+export const PROFILE_ORDER: PedalboardType[] = ['pocketMaster', 'pocketMasterCfw', 'valetonGp5', 'outros']
 
 export function profileOf(config: Pick<ControllerConfig, 'pedalboardType'>): PedalboardProfile {
   return PROFILES[config.pedalboardType ?? 'outros']

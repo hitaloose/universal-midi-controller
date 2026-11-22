@@ -1,6 +1,6 @@
 export type MidiMessageType = 'programChange' | 'controlChange' | 'noteOn' | 'noteOff'
 
-export type PedalboardType = 'outros' | 'pocketMaster' | 'valetonGp5'
+export type PedalboardType = 'outros' | 'pocketMaster' | 'pocketMasterCfw' | 'valetonGp5'
 
 export type BankId = 'A' | 'B' | 'C' | 'D'
 

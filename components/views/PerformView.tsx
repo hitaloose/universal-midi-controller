@@ -6,6 +6,7 @@ import type { UseLooperReturn } from '@/hooks/useLooper'
 import type { useTapTempo } from '@/hooks/useTapTempo'
 import { presetsInBank } from '@/hooks/useController'
 import { describePresetMidi, profileOf } from '@/lib/profiles'
+import { cfwTempoForDelay } from '@/lib/pocketMasterCfwMidi'
 import { PresetPad } from '@/components/PresetPad'
 import { FxPad } from '@/components/FxPad'
 import { BankBar } from '@/components/perform/BankBar'
@@ -39,7 +40,7 @@ export function PerformView(props: Props) {
   const counts = Object.fromEntries(BANK_IDS.map((b) => [b, presetsInBank(config, b).length])) as Record<BankId, number>
   const activePreset = config.presets.find((p) => p.id === activePresetId)
   const fxOnCount = config.fxPads.filter((f) => fxStates[f.id]).length
-  const showTap = profile.hasTapDelay && config.showTapDelay !== false
+  const showTap = profile.tapDelay !== null && config.showTapDelay !== false
   const showLooper = config.showLooper !== false
 
   const tapCard = (compact: boolean) => (
@@ -49,7 +50,12 @@ export function PerformView(props: Props) {
       bpm={props.tapTempo.bpm}
       subdivision={props.tapTempo.subdivision}
       delayMs={props.tapTempo.delayMs}
-      closestMs={props.tapTempo.closestMs}
+      closestMs={
+        profile.tapDelay === 'tempoCc'
+          ? props.tapTempo.delayMs !== null ? cfwTempoForDelay(props.tapTempo.delayMs).ms : null
+          : props.tapTempo.closestMs
+      }
+      deviceLabel={profile.label}
       onTap={props.tapTempo.tap}
       onSetSubdivision={props.tapTempo.setSubdivision}
       onDisable={props.tapTempo.disable}

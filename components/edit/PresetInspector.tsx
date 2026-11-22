@@ -40,7 +40,7 @@ export function PresetInspector(props: Props) {
   const presetNumber = profile.presetNumber(draft.midi)
   const [min, max] = profile.presetRange
   const setNumber = (n: number) => set({ midi: profile.presetMidi(Math.min(max, Math.max(min, n)), draft.midi.channel) })
-  const isPocketMaster = profile.type === 'pocketMaster'
+  const isPocketMaster = profile.pfBanks
   const pmBank = presetNumber !== null && presetNumber > 50 ? 'F' : 'P'
   const color = padColor(draft.color)
   const dirty = JSON.stringify(draft) !== JSON.stringify(preset)

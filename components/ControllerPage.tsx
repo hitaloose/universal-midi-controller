@@ -14,6 +14,7 @@ import { resolveLooperConfig } from '@/lib/looper'
 import { resolveSongbookConfig } from '@/lib/songbook'
 import { buildPanicMessages } from '@/lib/midi'
 import { profileOf } from '@/lib/profiles'
+import { cfwTempoForDelay, cfwTempoMessages } from '@/lib/pocketMasterCfwMidi'
 import { padKeys } from '@/lib/keys'
 import type {
   ControllerConfig,
@@ -95,8 +96,19 @@ export default function ControllerPage() {
     preciseTimestamps: output.connection.kind === 'usb',
   })
 
-  const sendTapDelay = (source: string) => {
-    if (tapTempo.closestMs === null) return null
+  const tapDelayMode = profileOf(config).tapDelay
+  const cfwTempo = tapDelayMode === 'tempoCc' && tapTempo.delayMs !== null ? cfwTempoForDelay(tapTempo.delayMs) : null
+  /** Delay time the pedal will actually get, for the log and to resend when it changes. */
+  const tapDelayMs = tapDelayMode === 'tempoCc' ? (cfwTempo?.ms ?? null) : tapDelayMode === 'sysex' ? tapTempo.closestMs : null
+
+  const sendTapDelay = () => {
+    const source = `Tap delay ${tapDelayMs} ms`
+    if (tapDelayMode === 'tempoCc') {
+      if (!cfwTempo) return null
+      const msgs = cfwTempoMessages(cfwTempo.bpm, config.defaultChannel ?? 1)
+      return () => msgs.forEach((m, i) => setTimeout(() => send(m, `${source} (${cfwTempo.bpm} BPM)`), i * MIDI_MSG_DELAY_MS))
+    }
+    if (tapDelayMode !== 'sysex' || tapTempo.closestMs === null) return null
     const bytes = POCKET_MASTER_DELAY_TABLE[tapTempo.closestMs]
     // Table entries include a 2-byte BLE MIDI framing header from capture; strip it
     // so both USB (output.send) and BLE (writeBleMidiRaw) receive plain SysEx [0xF0…0xF7]
@@ -107,8 +119,9 @@ export default function ControllerPage() {
   useLayoutEffect(() => {
     tapTempoSendRef.current = () => {
       if (!tapTempo.isEnabled) return
-      const fire = sendTapDelay(`Tap delay ${tapTempo.closestMs} ms`)
+      const fire = sendTapDelay()
       if (!fire) return
+      if (tapDelayMode !== 'sysex') return fire()
       // Prime the device into editor mode, then send delay time 100ms later
       sendRaw(PM_REQUEST_PRESET_STATE, 'Tap delay: editor mode')
       setTimeout(fire, 100)
@@ -116,10 +129,10 @@ export default function ControllerPage() {
   })
 
   useEffect(() => {
-    if (!tapTempo.isEnabled || tapTempo.closestMs === null) return
+    if (!tapTempo.isEnabled || tapDelayMs === null) return
     const timer = setTimeout(() => tapTempoSendRef.current(), 500)
     return () => clearTimeout(timer)
-  }, [tapTempo.isEnabled, tapTempo.closestMs])
+  }, [tapTempo.isEnabled, tapDelayMs])
 
   const fxName = (fx: FxPad) => config.presets.find((p) => p.id === activePresetId)?.fxAliases?.[fx.id] || fx.name
 
@@ -141,7 +154,7 @@ export default function ControllerPage() {
       if (preset) send(preset.midi, `Preset ${preset.name}`)
       activatePreset(id)
       if (tapTempo.isEnabled) {
-        const fire = sendTapDelay(`Tap delay ${tapTempo.closestMs} ms`)
+        const fire = sendTapDelay()
         if (fire) setTimeout(fire, MIDI_MSG_DELAY_MS)
       }
     }

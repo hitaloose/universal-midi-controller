@@ -79,7 +79,7 @@ export function SetupWizard({ output, onCreate, onImport }: Props) {
   }
 
   const create = () =>
-    onCreate(buildInitialConfig({ type, presets: nPresets, fx: nFx, showTapDelay: profile.hasTapDelay && showTap, showLooper }))
+    onCreate(buildInitialConfig({ type, presets: nPresets, fx: nFx, showTapDelay: profile.tapDelay !== null && showTap, showLooper }))
 
   const previewFx = Array.from({ length: nFx }, (_, i) => makeFxPad(profile, i, 1).name)
 
@@ -232,7 +232,7 @@ export function SetupWizard({ output, onCreate, onImport }: Props) {
                 </div>
               </div>
               <div className="flex flex-col gap-2.5">
-                {profile.hasTapDelay && (
+                {profile.tapDelay !== null && (
                   <label className="flex items-center gap-3.5 px-3.5 py-3 rounded-xl border border-line bg-surface cursor-pointer">
                     <input type="checkbox" checked={showTap} onChange={(e) => setShowTap(e.target.checked)} className="w-5 h-5 accent-preset" />
                     <span className="flex flex-col">
@@ -332,7 +332,7 @@ export function SetupWizard({ output, onCreate, onImport }: Props) {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  {(step === 1 ? profile.hasTapDelay : profile.hasTapDelay && showTap) && (
+                  {(step === 1 ? profile.tapDelay !== null : profile.tapDelay !== null && showTap) && (
                     <div className="flex-1 min-h-12 rounded-[10px] bg-surface-2 border border-line flex items-center justify-between px-3 text-[11px] font-bold">
                       <span>TAP DELAY</span>
                       <span className="font-mono text-ink-dim">-- BPM</span>
