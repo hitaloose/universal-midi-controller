@@ -12,6 +12,7 @@ import { KeyCap } from '@/components/ui/KeyCap'
 import { SectionTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Sheet } from '@/components/ui/Sheet'
+import { FullSheet } from '@/components/ui/FullSheet'
 import { PlusIcon } from '@/components/ui/icons'
 import { PresetInspector } from '@/components/edit/PresetInspector'
 import { FxInspector } from '@/components/edit/FxInspector'
@@ -140,7 +141,7 @@ export function EditView(props: Props) {
       </div>
 
       {selectedPreset && (
-        <Sheet label="Preset inspector" onClose={close}>
+        <FullSheet label="Preset editor" onClose={close}>
           <PresetInspector
             key={selectedPreset.id}
             preset={selectedPreset}
@@ -166,7 +167,7 @@ export function EditView(props: Props) {
             onClose={close}
             onSendTest={(msg) => props.onSendTest(msg, `Test ${selectedPreset.name}`)}
           />
-        </Sheet>
+        </FullSheet>
       )}
       {selectedFx && (
         <Sheet label="FX inspector" onClose={close}>

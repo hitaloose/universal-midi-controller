@@ -53,335 +53,355 @@ export function PresetInspector(props: Props) {
   const color = padColor(draft.color)
   const soloOn = draft.soloEnabled !== false
   const isFactory = profile.pfBanks && presetNumber !== null && presetNumber > 50
-  const checkCols = 1 + (soloOn ? 1 : 0) + (draft.scenes ? 2 : 0)
-  const fxGrid = `minmax(96px,1fr) repeat(${checkCols}, 44px) minmax(96px,1fr)`
   const dirty = JSON.stringify(draft) !== JSON.stringify(preset)
 
   return (
     <>
-      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-line-soft">
-        <span className="w-3 h-3 rounded-full" style={{ background: color.hex }} aria-hidden="true" />
-        <h2 className="m-0 text-lg font-bold">Preset {pad2(props.index + 1)}</h2>
-        <span className="text-xs font-bold text-edit bg-edit/12 rounded-full px-2.5 py-0.5">Selected</span>
-        <div className="flex-1" />
-        <button type="button" aria-label="Duplicate preset" onClick={props.onDuplicate} className="w-11 h-11 flex items-center justify-center rounded-control text-ink-dim hover:text-ink hover:bg-surface cursor-pointer">
-          <CopyIcon size={18} />
-        </button>
-        <button type="button" aria-label="Close inspector" onClick={props.onClose} className="w-11 h-11 flex items-center justify-center rounded-control text-ink-dim hover:text-ink hover:bg-surface cursor-pointer">
-          <CloseIcon size={18} />
-        </button>
+      <div className="border-b border-line-soft">
+        <div className="flex items-center gap-2.5 px-5 py-3 max-w-5xl mx-auto w-full">
+          <span className="w-3 h-3 rounded-full" style={{ background: color.hex }} aria-hidden="true" />
+          <h2 className="m-0 text-lg font-bold">Preset {pad2(props.index + 1)}</h2>
+          <span className="text-xs font-bold text-edit bg-edit/12 rounded-full px-2.5 py-0.5">Selected</span>
+          <div className="flex-1" />
+          <button type="button" aria-label="Duplicate preset" onClick={props.onDuplicate} className="w-11 h-11 flex items-center justify-center rounded-control text-ink-dim hover:text-ink hover:bg-surface cursor-pointer">
+            <CopyIcon size={18} />
+          </button>
+          <button type="button" aria-label="Close inspector" onClick={props.onClose} className="w-11 h-11 flex items-center justify-center rounded-control text-ink-dim hover:text-ink hover:bg-surface cursor-pointer">
+            <CloseIcon size={18} />
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
-        <label className="flex flex-col gap-1.5">
-          <FieldLabel>Name</FieldLabel>
-          <input value={draft.name} onChange={(e) => set({ name: e.target.value })} className={inputClass} />
-        </label>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto w-full px-5 py-5 grid gap-x-10 gap-y-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-start">
+          <div className="flex flex-col gap-5 min-w-0">
+            <label className="flex flex-col gap-1.5">
+              <FieldLabel>Name</FieldLabel>
+              <input value={draft.name} onChange={(e) => set({ name: e.target.value })} className={inputClass} />
+            </label>
 
-        <div className="flex flex-wrap gap-5">
-          <div className="flex flex-col gap-1.5">
-            <FieldLabel>Color</FieldLabel>
-            <div className="flex gap-2">
-              {PAD_COLORS.map((c) => {
-                const on = (draft.color ?? 'amber') === c.id
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    aria-label={c.label}
-                    aria-pressed={on}
-                    onClick={() => set({ color: c.id })}
-                    className={`w-9 h-9 rounded-full cursor-pointer ${on ? 'ring-2 ring-ink ring-offset-2 ring-offset-bar' : ''}`}
-                    style={{ background: c.hex }}
-                  />
-                )
-              })}
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <FieldLabel>Bank</FieldLabel>
-            <Segmented<BankId>
-              label="Bank"
-              size="sm"
-              options={BANK_IDS.map((b) => ({ value: b, label: b }))}
-              value={draft.bank ?? 'A'}
-              onChange={(bank) => set({ bank })}
-            />
-          </div>
-        </div>
-
-        <KeyBindingField value={draft.keyBinding} usedKeys={props.usedKeys} onChange={(keyBinding) => set({ keyBinding })} />
-
-        <div className="flex flex-col gap-2">
-          <FieldLabel>{profile.presetLabel}</FieldLabel>
-          <div className="flex flex-wrap items-center gap-2">
-            {isPocketMaster && (
-              <Segmented
-                label="Pocket Master bank"
-                size="sm"
-                options={[
-                  { value: 'P', label: 'P' },
-                  { value: 'F', label: 'F' },
-                ]}
-                value={presetNumber === null ? null : pmBank}
-                onChange={(b) => {
-                  const local = presetNumber === null ? 1 : presetNumber > 50 ? presetNumber - 50 : presetNumber
-                  setNumber(b === 'F' ? local + 50 : local)
-                }}
-              />
-            )}
-            <button type="button" aria-label="Previous number" onClick={() => setNumber((presetNumber ?? min + 1) - 1)} className="w-11 h-11 rounded-control border border-line bg-surface-2 text-lg cursor-pointer">
-              −
-            </button>
-            <span className="font-mono text-[22px] font-bold min-w-16 text-center">
-              {presetNumber === null ? '--' : isPocketMaster ? pad2(presetNumber > 50 ? presetNumber - 50 : presetNumber) : pad2(presetNumber)}
-            </span>
-            <button type="button" aria-label="Next number" onClick={() => setNumber((presetNumber ?? min - 1) + 1)} className="w-11 h-11 rounded-control border border-line bg-surface-2 text-lg cursor-pointer">
-              +
-            </button>
-            <div className="flex-1" />
-            <Button size="sm" onClick={() => props.onSendTest(draft.midi)}>Send test</Button>
-          </div>
-          <Hint>
-            Sends {describeMidi(draft.midi)} on channel {draft.midi.channel}
-            {presetNumber !== null ? ` (${profile.formatPreset(presetNumber)})` : ''}.
-          </Hint>
-        </div>
-
-        {profile.tapDelay !== null && (
-          <div className="flex flex-col gap-2">
-            <FieldLabel>Delay tempo</FieldLabel>
-            {draft.tempo ? (
-              <>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Stepper
-                    label="BPM"
-                    value={draft.tempo.bpm}
-                    min={CFW_MIN_BPM}
-                    max={CFW_MAX_BPM}
-                    onChange={(bpm) => set({ tempo: { ...draft.tempo!, bpm } })}
-                  />
-                  <span className="text-xs text-ink-dim">BPM</span>
-                  <Segmented<Subdivision>
-                    label="Subdivision"
-                    size="sm"
-                    options={TEMPO_SUBDIVISIONS}
-                    value={draft.tempo.subdivision}
-                    onChange={(subdivision) => set({ tempo: { ...draft.tempo!, subdivision } })}
-                  />
-                  <div className="flex-1" />
-                  <Button size="sm" onClick={() => set({ tempo: undefined })}>Clear</Button>
-                </div>
-                <Hint>Sent with the preset. Tapping while this preset is active updates it.</Hint>
-              </>
-            ) : (
-              <>
-                <div>
-                  <Button size="sm" onClick={() => set({ tempo: { bpm: 120, subdivision: 'eighth' } })}>Set tempo</Button>
-                </div>
-                <Hint>Not set: the pedal keeps the preset&apos;s own tempo. Tap with this preset active to set it.</Hint>
-              </>
-            )}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2">
-          <FieldLabel>Modes</FieldLabel>
-          <div className="flex flex-col border border-line-soft rounded-xl overflow-hidden">
-            <ModeToggle
-              label="Solo"
-              hint="Press the active preset again to switch the solo FX on"
-              checked={soloOn}
-              onChange={(on) => set({ soloEnabled: on })}
-            />
-            {profile.presetModes && (
-              <>
-                <ModeToggle
-                  label="Scenes"
-                  hint={isFactory ? 'Factory presets (F01–F50) cannot store scenes' : 'BASE, SC1 and SC2 buttons; each scene has its own FX list'}
-                  checked={!!draft.scenes}
-                  disabled={isFactory && !draft.scenes}
-                  onChange={(on) =>
-                    set({
-                      scenes: on
-                        ? {
-                            sc1: { name: 'Scene 1', fxStates: { ...draft.fxInitialStates } },
-                            sc2: { name: 'Scene 2', fxStates: { ...draft.fxInitialStates } },
-                          }
-                        : undefined,
-                    })
-                  }
-                />
-                {draft.scenes && (
-                  <div className="grid grid-cols-2 gap-2 px-3.5 pb-3">
-                    {(['sc1', 'sc2'] as const).map((id) => (
-                      <label key={id} className="flex flex-col gap-1">
-                        <span className="text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-dim">{id.toUpperCase()} name</span>
-                        <input
-                          value={draft.scenes![id].name}
-                          onChange={(e) => set({ scenes: { ...draft.scenes!, [id]: { ...draft.scenes![id], name: e.target.value } } })}
-                          className="box-border h-9 rounded-lg border border-line bg-ground text-ink px-2 text-sm min-w-0"
-                        />
-                      </label>
-                    ))}
-                  </div>
-                )}
-                <ModeToggle
-                  label="STOMP"
-                  hint="FS1 / FS2 buttons that toggle the block groups set on the pedal"
-                  checked={!!draft.stomp}
-                  onChange={(on) => set({ stomp: on ? { fs1: { name: 'FS1', initialOn: false } } : undefined })}
-                />
-                {draft.stomp && (
-                  <div className="flex flex-col gap-2 px-3.5 pb-3">
-                    {(['fs1', 'fs2'] as const).map((id) => {
-                      const sw = draft.stomp?.[id]
-                      const setSw = (next: StompSwitch | undefined) => {
-                        const stomp = { ...draft.stomp, [id]: next }
-                        set({ stomp: stomp.fs1 || stomp.fs2 ? stomp : undefined })
-                      }
-                      return (
-                        <div key={id} className="flex items-center gap-2.5">
-                          <label className="flex items-center gap-2 w-16 shrink-0 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              aria-label={`Show ${id.toUpperCase()}`}
-                              checked={!!sw}
-                              onChange={(e) => setSw(e.target.checked ? { name: id.toUpperCase(), initialOn: false } : undefined)}
-                              className="w-5 h-5 accent-fx cursor-pointer"
-                            />
-                            <span className="font-mono text-xs font-bold">{id.toUpperCase()}</span>
-                          </label>
-                          <input
-                            aria-label={`${id.toUpperCase()} name`}
-                            disabled={!sw}
-                            value={sw?.name ?? ''}
-                            onChange={(e) => sw && setSw({ ...sw, name: e.target.value })}
-                            className="box-border h-9 flex-1 rounded-lg border border-line bg-ground text-ink px-2 text-sm min-w-0 disabled:opacity-40"
-                          />
-                          <label className={`flex items-center gap-1.5 text-xs text-ink-dim shrink-0 ${sw ? 'cursor-pointer' : 'opacity-40'}`}>
-                            <input
-                              type="checkbox"
-                              disabled={!sw}
-                              checked={sw?.initialOn ?? false}
-                              onChange={(e) => sw && setSw({ ...sw, initialOn: e.target.checked })}
-                              className="w-5 h-5 accent-fx cursor-pointer"
-                            />
-                            On at start
-                          </label>
-                        </div>
-                      )
-                    })}
-                    <Hint>&quot;On at start&quot; is the group state saved in the pedal preset: the app cannot read it, so match it here.</Hint>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {fxPads.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <FieldLabel>FX behavior</FieldLabel>
-            <div className="border border-line-soft rounded-xl overflow-x-auto">
-              <div style={{ gridTemplateColumns: fxGrid }} className="grid gap-2 px-3 py-2 bg-surface text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-dim min-w-max">
-                <span>FX</span>
-                <span className="text-center">Start</span>
-                {soloOn && <span className="text-center">Solo</span>}
-                {draft.scenes && <span className="text-center">SC1</span>}
-                {draft.scenes && <span className="text-center">SC2</span>}
-                <span>Alias</span>
-              </div>
-              {fxPads.map((fx) => (
-                <div key={fx.id} style={{ gridTemplateColumns: fxGrid }} className="grid gap-2 px-3 py-1.5 border-t border-line-soft items-center min-w-max">
-                  <span className="text-sm font-semibold truncate">{fx.name}</span>
-                  <span className="flex justify-center">
-                    <input
-                      type="checkbox"
-                      aria-label={`${fx.name} on at preset start`}
-                      checked={draft.fxInitialStates[fx.id] ?? false}
-                      onChange={(e) => set({ fxInitialStates: { ...draft.fxInitialStates, [fx.id]: e.target.checked } })}
-                      className="w-5 h-5 accent-fx cursor-pointer"
-                    />
-                  </span>
-                  {soloOn && (
-                    <span className="flex justify-center">
-                      <input
-                        type="checkbox"
-                        aria-label={`${fx.name} on in solo mode`}
-                        checked={draft.fxSoloStates[fx.id] ?? false}
-                        onChange={(e) => set({ fxSoloStates: { ...draft.fxSoloStates, [fx.id]: e.target.checked } })}
-                        className="w-5 h-5 accent-solo cursor-pointer"
+            <div className="flex flex-wrap gap-5">
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel>Color</FieldLabel>
+                <div className="flex gap-2">
+                  {PAD_COLORS.map((c) => {
+                    const on = (draft.color ?? 'amber') === c.id
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        aria-label={c.label}
+                        aria-pressed={on}
+                        onClick={() => set({ color: c.id })}
+                        className={`w-9 h-9 rounded-full cursor-pointer ${on ? 'ring-2 ring-ink ring-offset-2 ring-offset-bar' : ''}`}
+                        style={{ background: c.hex }}
                       />
-                    </span>
-                  )}
-                  {draft.scenes &&
-                    (['sc1', 'sc2'] as const).map((id) => {
-                      const scene = draft.scenes![id]
-                      return (
-                        <span key={id} className="flex justify-center">
-                          <input
-                            type="checkbox"
-                            aria-label={`${fx.name} on in ${scene.name || id.toUpperCase()}`}
-                            checked={scene.fxStates[fx.id] ?? draft.fxInitialStates[fx.id] ?? false}
-                            onChange={(e) =>
-                              set({
-                                scenes: {
-                                  ...draft.scenes!,
-                                  [id]: { ...scene, fxStates: { ...scene.fxStates, [fx.id]: e.target.checked } },
-                                },
-                              })
-                            }
-                            className="w-5 h-5 accent-preset cursor-pointer"
-                          />
-                        </span>
-                      )
-                    })}
-                  <input
-                    aria-label={`${fx.name} alias in this preset`}
-                    placeholder={fx.name}
-                    value={draft.fxAliases?.[fx.id] ?? ''}
-                    onChange={(e) => set({ fxAliases: { ...draft.fxAliases, [fx.id]: e.target.value } })}
-                    className="box-border h-9 rounded-lg border border-line bg-ground text-ink px-2 text-sm min-w-0"
-                  />
+                    )
+                  })}
                 </div>
-              ))}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel>Bank</FieldLabel>
+                <Segmented<BankId>
+                  label="Bank"
+                  size="sm"
+                  options={BANK_IDS.map((b) => ({ value: b, label: b }))}
+                  value={draft.bank ?? 'A'}
+                  onChange={(bank) => set({ bank })}
+                />
+              </div>
             </div>
-            {draft.scenes && <Hint>Start is BASE. SC1 / SC2 are what the pads show when that scene plays: set them to match the scenes saved on the pedal.</Hint>}
-          </div>
-        )}
 
-        <div className="flex flex-col gap-2">
-          <FieldLabel>Position</FieldLabel>
-          <div className="flex gap-2">
-            <Button size="sm" disabled={!props.canMoveLeft} onClick={() => props.onMove(-1)} aria-label="Move left">
-              <ChevronLeft size={16} /> Move left
-            </Button>
-            <Button size="sm" disabled={!props.canMoveRight} onClick={() => props.onMove(1)} aria-label="Move right">
-              Move right <ChevronRight size={16} />
-            </Button>
+            <KeyBindingField value={draft.keyBinding} usedKeys={props.usedKeys} onChange={(keyBinding) => set({ keyBinding })} />
+
+            <div className="flex flex-col gap-2">
+              <FieldLabel>{profile.presetLabel}</FieldLabel>
+              <div className="flex flex-wrap items-center gap-2">
+                {isPocketMaster && (
+                  <Segmented
+                    label="Pocket Master bank"
+                    size="sm"
+                    options={[
+                      { value: 'P', label: 'P' },
+                      { value: 'F', label: 'F' },
+                    ]}
+                    value={presetNumber === null ? null : pmBank}
+                    onChange={(b) => {
+                      const local = presetNumber === null ? 1 : presetNumber > 50 ? presetNumber - 50 : presetNumber
+                      setNumber(b === 'F' ? local + 50 : local)
+                    }}
+                  />
+                )}
+                <button type="button" aria-label="Previous number" onClick={() => setNumber((presetNumber ?? min + 1) - 1)} className="w-11 h-11 rounded-control border border-line bg-surface-2 text-lg cursor-pointer">
+                  −
+                </button>
+                <span className="font-mono text-[22px] font-bold min-w-16 text-center">
+                  {presetNumber === null ? '--' : isPocketMaster ? pad2(presetNumber > 50 ? presetNumber - 50 : presetNumber) : pad2(presetNumber)}
+                </span>
+                <button type="button" aria-label="Next number" onClick={() => setNumber((presetNumber ?? min - 1) + 1)} className="w-11 h-11 rounded-control border border-line bg-surface-2 text-lg cursor-pointer">
+                  +
+                </button>
+                <div className="flex-1" />
+                <Button size="sm" onClick={() => props.onSendTest(draft.midi)}>Send test</Button>
+              </div>
+              <Hint>
+                Sends {describeMidi(draft.midi)} on channel {draft.midi.channel}
+                {presetNumber !== null ? ` (${profile.formatPreset(presetNumber)})` : ''}.
+              </Hint>
+            </div>
+
+            {profile.tapDelay !== null && (
+              <div className="flex flex-col gap-2">
+                <FieldLabel>Delay tempo</FieldLabel>
+                {draft.tempo ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Stepper
+                        label="BPM"
+                        value={draft.tempo.bpm}
+                        min={CFW_MIN_BPM}
+                        max={CFW_MAX_BPM}
+                        onChange={(bpm) => set({ tempo: { ...draft.tempo!, bpm } })}
+                      />
+                      <span className="text-xs text-ink-dim">BPM</span>
+                      <Segmented<Subdivision>
+                        label="Subdivision"
+                        size="sm"
+                        options={TEMPO_SUBDIVISIONS}
+                        value={draft.tempo.subdivision}
+                        onChange={(subdivision) => set({ tempo: { ...draft.tempo!, subdivision } })}
+                      />
+                      <div className="flex-1" />
+                      <Button size="sm" onClick={() => set({ tempo: undefined })}>Clear</Button>
+                    </div>
+                    <Hint>Sent with the preset. Tapping while this preset is active updates it.</Hint>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <Button size="sm" onClick={() => set({ tempo: { bpm: 120, subdivision: 'eighth' } })}>Set tempo</Button>
+                    </div>
+                    <Hint>Not set: the pedal keeps the preset&apos;s own tempo. Tap with this preset active to set it.</Hint>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <FieldLabel>Position</FieldLabel>
+              <div className="flex gap-2">
+                <Button size="sm" disabled={!props.canMoveLeft} onClick={() => props.onMove(-1)} aria-label="Move left">
+                  <ChevronLeft size={16} /> Move left
+                </Button>
+                <Button size="sm" disabled={!props.canMoveRight} onClick={() => props.onMove(1)} aria-label="Move right">
+                  Move right <ChevronRight size={16} />
+                </Button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              aria-expanded={showRaw}
+              onClick={() => setShowRaw((v) => !v)}
+              className="flex items-center justify-between h-12 px-4 rounded-xl border border-line-soft bg-surface text-sm font-semibold cursor-pointer"
+            >
+              <span>Advanced: raw MIDI command</span>
+              <span className="text-ink-dim" aria-hidden="true">{showRaw ? '−' : '+'}</span>
+            </button>
+            {showRaw && <MidiFields label="MIDI command" value={draft.midi} onChange={(midi) => set({ midi })} />}
+          </div>
+
+          <div className="flex flex-col gap-5 min-w-0">
+            <div className="flex flex-col gap-2">
+              <FieldLabel>Modes</FieldLabel>
+              <div className="flex flex-col border border-line-soft rounded-xl overflow-hidden">
+                <ModeToggle
+                  label="Solo"
+                  hint="Press the active preset again to switch the solo FX on"
+                  checked={soloOn}
+                  onChange={(on) => set({ soloEnabled: on })}
+                />
+                {profile.presetModes && (
+                  <>
+                    <ModeToggle
+                      label="Scenes"
+                      hint={isFactory ? 'Factory presets (F01–F50) cannot store scenes' : 'BASE, SC1 and SC2 buttons; each scene has its own FX list'}
+                      checked={!!draft.scenes}
+                      disabled={isFactory && !draft.scenes}
+                      onChange={(on) =>
+                        set({
+                          scenes: on
+                            ? {
+                                sc1: { name: 'Scene 1', fxStates: { ...draft.fxInitialStates } },
+                                sc2: { name: 'Scene 2', fxStates: { ...draft.fxInitialStates } },
+                              }
+                            : undefined,
+                        })
+                      }
+                    />
+                    {draft.scenes && (
+                      <div className="grid grid-cols-2 gap-2 px-3.5 pb-3">
+                        {(['sc1', 'sc2'] as const).map((id) => (
+                          <label key={id} className="flex flex-col gap-1">
+                            <span className="text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-dim">{id.toUpperCase()} name</span>
+                            <input
+                              value={draft.scenes![id].name}
+                              onChange={(e) => set({ scenes: { ...draft.scenes!, [id]: { ...draft.scenes![id], name: e.target.value } } })}
+                              className="box-border h-9 rounded-lg border border-line bg-ground text-ink px-2 text-sm min-w-0"
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    <ModeToggle
+                      label="STOMP"
+                      hint="FS1 / FS2 buttons that toggle the block groups set on the pedal"
+                      checked={!!draft.stomp}
+                      onChange={(on) => set({ stomp: on ? { fs1: { name: 'FS1', initialOn: false } } : undefined })}
+                    />
+                    {draft.stomp && (
+                      <div className="flex flex-col gap-2 px-3.5 pb-3">
+                        {(['fs1', 'fs2'] as const).map((id) => {
+                          const sw = draft.stomp?.[id]
+                          const setSw = (next: StompSwitch | undefined) => {
+                            const stomp = { ...draft.stomp, [id]: next }
+                            set({ stomp: stomp.fs1 || stomp.fs2 ? stomp : undefined })
+                          }
+                          return (
+                            <div key={id} className="flex items-center gap-2.5">
+                              <label className="flex items-center gap-2 w-16 shrink-0 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Show ${id.toUpperCase()}`}
+                                  checked={!!sw}
+                                  onChange={(e) => setSw(e.target.checked ? { name: id.toUpperCase(), initialOn: false } : undefined)}
+                                  className="w-5 h-5 accent-fx cursor-pointer"
+                                />
+                                <span className="font-mono text-xs font-bold">{id.toUpperCase()}</span>
+                              </label>
+                              <input
+                                aria-label={`${id.toUpperCase()} name`}
+                                disabled={!sw}
+                                value={sw?.name ?? ''}
+                                onChange={(e) => sw && setSw({ ...sw, name: e.target.value })}
+                                className="box-border h-9 flex-1 rounded-lg border border-line bg-ground text-ink px-2 text-sm min-w-0 disabled:opacity-40"
+                              />
+                              <label className={`flex items-center gap-1.5 text-xs text-ink-dim shrink-0 ${sw ? 'cursor-pointer' : 'opacity-40'}`}>
+                                <input
+                                  type="checkbox"
+                                  disabled={!sw}
+                                  checked={sw?.initialOn ?? false}
+                                  onChange={(e) => sw && setSw({ ...sw, initialOn: e.target.checked })}
+                                  className="w-5 h-5 accent-fx cursor-pointer"
+                                />
+                                On at start
+                              </label>
+                            </div>
+                          )
+                        })}
+                        <Hint>&quot;On at start&quot; is the group state saved in the pedal preset: the app cannot read it, so match it here.</Hint>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {fxPads.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <FieldLabel>FX behavior</FieldLabel>
+                <div className="border border-line-soft rounded-xl overflow-x-auto">
+                  <table className="w-full border-collapse table-fixed">
+                    <thead>
+                      <tr className="bg-surface text-[10px] sm:text-[11px] font-semibold tracking-[0.04em] sm:tracking-[0.08em] uppercase text-ink-dim">
+                        <th scope="col" className="text-left font-semibold px-2 sm:px-3 py-2">FX</th>
+                        <th scope="col" className="w-10 sm:w-14 text-center font-semibold px-1 py-2">Start</th>
+                        {soloOn && <th scope="col" className="w-10 sm:w-14 text-center font-semibold px-1 py-2">Solo</th>}
+                        {draft.scenes &&
+                          (['sc1', 'sc2'] as const).map((id) => (
+                            <th key={id} scope="col" className="w-10 sm:w-14 text-center font-semibold px-1 py-2" title={draft.scenes![id].name}>
+                              {id.toUpperCase()}
+                            </th>
+                          ))}
+                        <th scope="col" className="w-[26%] sm:w-[34%] text-left font-semibold px-2 sm:px-3 py-2">Alias</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fxPads.map((fx) => (
+                        <tr key={fx.id} className="border-t border-line-soft">
+                          <th scope="row" className="text-left text-[13px] sm:text-sm font-semibold leading-tight px-2 sm:px-3 py-1.5 [overflow-wrap:anywhere]">{fx.name}</th>
+                          <td className="px-1 py-1.5 text-center">
+                            <input
+                              type="checkbox"
+                              aria-label={`${fx.name} on at preset start`}
+                              checked={draft.fxInitialStates[fx.id] ?? false}
+                              onChange={(e) => set({ fxInitialStates: { ...draft.fxInitialStates, [fx.id]: e.target.checked } })}
+                              className="w-5 h-5 align-middle accent-fx cursor-pointer"
+                            />
+                          </td>
+                          {soloOn && (
+                            <td className="px-1 py-1.5 text-center">
+                              <input
+                                type="checkbox"
+                                aria-label={`${fx.name} on in solo mode`}
+                                checked={draft.fxSoloStates[fx.id] ?? false}
+                                onChange={(e) => set({ fxSoloStates: { ...draft.fxSoloStates, [fx.id]: e.target.checked } })}
+                                className="w-5 h-5 align-middle accent-solo cursor-pointer"
+                              />
+                            </td>
+                          )}
+                          {draft.scenes &&
+                            (['sc1', 'sc2'] as const).map((id) => {
+                              const scene = draft.scenes![id]
+                              return (
+                                <td key={id} className="px-1 py-1.5 text-center">
+                                  <input
+                                    type="checkbox"
+                                    aria-label={`${fx.name} on in ${scene.name || id.toUpperCase()}`}
+                                    checked={scene.fxStates[fx.id] ?? draft.fxInitialStates[fx.id] ?? false}
+                                    onChange={(e) =>
+                                      set({
+                                        scenes: {
+                                          ...draft.scenes!,
+                                          [id]: { ...scene, fxStates: { ...scene.fxStates, [fx.id]: e.target.checked } },
+                                        },
+                                      })
+                                    }
+                                    className="w-5 h-5 align-middle accent-preset cursor-pointer"
+                                  />
+                                </td>
+                              )
+                            })}
+                          <td className="px-2 sm:px-3 py-1.5">
+                            <input
+                              aria-label={`${fx.name} alias in this preset`}
+                              placeholder={fx.name}
+                              value={draft.fxAliases?.[fx.id] ?? ''}
+                              onChange={(e) => set({ fxAliases: { ...draft.fxAliases, [fx.id]: e.target.value } })}
+                              className="box-border h-9 w-full rounded-lg border border-line bg-ground text-ink px-2 text-sm min-w-0"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {draft.scenes && <Hint>Start is BASE. SC1 / SC2 are what the pads show when that scene plays: set them to match the scenes saved on the pedal.</Hint>}
+              </div>
+            )}
           </div>
         </div>
-
-        <button
-          type="button"
-          aria-expanded={showRaw}
-          onClick={() => setShowRaw((v) => !v)}
-          className="flex items-center justify-between h-12 px-4 rounded-xl border border-line-soft bg-surface text-sm font-semibold cursor-pointer"
-        >
-          <span>Advanced: raw MIDI command</span>
-          <span className="text-ink-dim" aria-hidden="true">{showRaw ? '−' : '+'}</span>
-        </button>
-        {showRaw && <MidiFields label="MIDI command" value={draft.midi} onChange={(midi) => set({ midi })} />}
       </div>
 
-      <div className="flex items-center gap-2 px-5 py-3.5 border-t border-line-soft">
-        <button type="button" onClick={props.onRemove} className="h-11 px-3 text-[13px] font-semibold text-panic hover:underline cursor-pointer">
-          Remove
-        </button>
-        <div className="flex-1" />
-        <Button disabled={!dirty} onClick={() => setDraft(preset)}>Discard</Button>
-        <Button variant="primary" disabled={!dirty} onClick={() => props.onSave(draft)}>Save preset</Button>
+      <div className="border-t border-line-soft">
+        <div className="flex items-center gap-2 px-5 py-3.5 max-w-5xl mx-auto w-full">
+          <button type="button" onClick={props.onRemove} className="h-11 px-3 text-[13px] font-semibold text-panic hover:underline cursor-pointer">
+            Remove
+          </button>
+          <div className="flex-1" />
+          <Button disabled={!dirty} onClick={() => setDraft(preset)}>Discard</Button>
+          <Button variant="primary" disabled={!dirty} onClick={() => props.onSave(draft)}>Save preset</Button>
+        </div>
       </div>
     </>
   )
