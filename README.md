@@ -18,7 +18,14 @@ Turn a phone, tablet or laptop into a MIDI foot controller for your pedalboard, 
 
 ## Supported devices
 
-Ready-made profiles for the **Sonicake Pocket Master** and the **Valeton GP-5** (FX names, CC numbers, looper commands), plus a generic profile for any device that takes Program Change and Control Change messages. The MIDI tables used are in [`docs/`](docs/).
+Ready-made profiles for the **Sonicake Pocket Master**, the **Pocket Master CFW** and the **Valeton GP-5** (FX names, CC numbers, looper commands), plus a generic profile for any device that takes Program Change and Control Change messages. The MIDI tables used are in [`docs/`](docs/).
+
+### Pocket Master CFW
+
+For a Pocket Master running the [**Pocket Master CFW**](https://pocketmaster-cfw.guitar-training-generator.com/#top) custom firmware, with the pedal's MIDI map left on **Stock** (Settings → MIDI → MIDI MAP). It follows the [CFW MIDI guide](https://pocketmaster-cfw.guitar-training-generator.com/midi/):
+
+- Presets and block on/off use the same CCs as the stock firmware, plus shortcuts for **Freeze** (CC 114), **Global EQ** (CC 86), **Drum play** (CC 93) and **DLY Sync** (CC 87)
+- **Tap delay** turns the delay's Sync on and sets the tempo with CC 68/69, so no SysEx is needed. The subdivision is folded into the BPM, so leave the delay note at **1/4** (the Sync default). The CFW accepts 40–260 BPM, which gives delay times from 231 to 1500 ms
 
 ## Stack
 
