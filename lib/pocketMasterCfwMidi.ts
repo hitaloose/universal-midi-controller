@@ -1,4 +1,4 @@
-import type { MidiMessage, Subdivision } from './types'
+import type { MidiMessage, SceneId, StompSwitchId, Subdivision } from './types'
 import { POCKET_MASTER_FX_OPTIONS, type PocketMasterFxOption } from './pocketMasterMidi'
 
 // Pocket Master CFW, "Stock" MIDI map: https://pocketmaster-cfw.guitar-training-generator.com/midi/
@@ -52,3 +52,8 @@ export function cfwTempoMessages(bpm: number, note: Subdivision | null, channel:
     cc(CFW_TEMPO_BPM_CC, value - range * 128),
   ]
 }
+
+/** Scene select (≥ 64). The same scene again also returns to BASE, but CC 85 is sent for that to be explicit. */
+export const CFW_SCENE_CC: Record<SceneId, number> = { sc1: 82, sc2: 83, base: 85 }
+/** STOMP FS1 / FS2 (≥ 64): each message toggles the preset's block group. */
+export const CFW_STOMP_CC: Record<StompSwitchId, number> = { fs1: 80, fs2: 81 }

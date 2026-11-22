@@ -6,7 +6,7 @@ Turn a phone, tablet or laptop into a MIDI foot controller for your pedalboard, 
 
 ## Features
 
-- **Preset pads** — each one sends a MIDI message and sets which FX start on or off
+- **Preset pads** — each one sends a MIDI message and sets which FX start on or off; on the Pocket Master CFW they can also show scene and STOMP buttons
 - **FX pads** — toggles that send their own on/off messages; double-click an active preset for **solo mode**
 - **Banks** and layout templates (Starter, Compact, Big rig), with an edit mode to add, move and rename pads
 - **Tap tempo**, sent to the device's delay
@@ -27,6 +27,7 @@ For a Pocket Master running the [**Pocket Master CFW**](https://pocketmaster-cfw
 - Presets and block on/off use the same CCs as the stock firmware, plus shortcuts for **Freeze** (CC 114), **Global EQ** (CC 86), **Drum play** (CC 93) and **DLY Sync** (CC 87)
 - **Tap delay** turns the delay's Sync on, sets the note (1/4, dotted 1/8 or 1/8 via CC 27/28/29) and sends the tapped tempo with CC 68/69, so no SysEx is needed. The CFW accepts 40–260 BPM. The note CC also counts as a tap on the pedal, so it is only sent when the subdivision changes, when tap delay is turned on or after a preset change, and never twice within 2 s
 - **Tempo per preset** — the CFW keeps a BPM and delay note in each preset but can't report them over MIDI, so the app keeps its own copy per preset pad. Tapping (or changing the subdivision) while a preset is active stores the tempo in it, and selecting the preset sends it again. A preset without a stored tempo sends nothing, so the pedal plays the tempo saved in it. You can also set or clear the tempo in the preset inspector. Values sent over MIDI mark the pedal's preset as edited (`*`); save it on the pedal if you want the pedal to keep them on its own
+- **Modes per preset** — each preset turns **Solo**, **Scenes** and **STOMP** on or off in the preset inspector. Scenes add BASE / SC1 / SC2 buttons (CC 85 / 82 / 83) with an on/off list of FX pads per scene, so the pads follow the scene the pedal recalls; factory presets (F01–F50) can't store scenes. STOMP adds FS1 / FS2 buttons (CC 80 / 81) that toggle the block groups set on the pedal, starting from the state you mark as "On at start". Both work in any footswitch mode, and every button can have a keyboard key. Set **SAME AGAIN** to OFF on the pedal so nothing else changes the scene behind the app's back
 
 ## Stack
 

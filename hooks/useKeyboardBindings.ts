@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { BankId, ControllerConfig, LooperBindings, SongbookBindings } from '@/lib/types'
+import type { BankId, ControllerConfig, LooperBindings, SceneId, SongbookBindings, StompSwitchId } from '@/lib/types'
 import { presetsInBank } from '@/hooks/useController'
 
 type Props = {
@@ -11,6 +11,8 @@ type Props = {
   onTap: () => void
   onCycleSubdivision: () => void
   onDisable: () => void
+  /** Scene and STOMP keys; the handler ignores them when the active preset has no such buttons. */
+  onPresetControl: (id: SceneId | StompSwitchId) => void
   looperBindings: LooperBindings
   looperActions: Record<keyof LooperBindings, () => void>
   /** Only listened to while a setlist is open in the reader; they win over every other key there. */
@@ -27,6 +29,7 @@ export function useKeyboardBindings({
   onTap,
   onCycleSubdivision,
   onDisable,
+  onPresetControl,
   looperBindings,
   looperActions,
   songbookBindings,
@@ -47,6 +50,11 @@ export function useKeyboardBindings({
         .map((f) => [f.keyBinding!, f.id])
     )
     const tap = config.tapTempoBindings
+    const presetControlMap = new Map(
+      (Object.entries(config.presetControlBindings ?? {}) as [SceneId | StompSwitchId, string | undefined][])
+        .filter(([, code]) => code)
+        .map(([action, code]) => [code!, action])
+    )
     const looperMap = new Map(
       (Object.entries(looperBindings) as [keyof LooperBindings, string | undefined][])
         .filter(([, code]) => code)
@@ -87,6 +95,10 @@ export function useKeyboardBindings({
       } else if (tap?.disable === code) {
         e.preventDefault()
         onDisable()
+      } else if (presetControlMap.has(code)) {
+        e.preventDefault()
+        // A held key must not toggle a STOMP group over and over.
+        if (!e.repeat) onPresetControl(presetControlMap.get(code)!)
       } else if (looperMap.has(code)) {
         e.preventDefault()
         // Holding a key must not re-trigger REC/overdub arming.
@@ -96,5 +108,5 @@ export function useKeyboardBindings({
 
     document.addEventListener('keydown', handler)
     return () => document.removeEventListener('keydown', handler)
-  }, [config, activeBank, enabled, onPresetPad, onFxPad, onTap, onCycleSubdivision, onDisable, looperBindings, looperActions, songbookBindings, songbookActions])
+  }, [config, activeBank, enabled, onPresetPad, onFxPad, onTap, onCycleSubdivision, onDisable, onPresetControl, looperBindings, looperActions, songbookBindings, songbookActions])
 }

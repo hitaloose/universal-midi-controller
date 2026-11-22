@@ -7,6 +7,7 @@ import { presetsInBank } from '@/hooks/useController'
 import { PROFILES, PROFILE_ORDER } from '@/lib/profiles'
 import { formatKeyCode } from '@/components/KeyBindingField'
 import { DeviceList } from '@/components/DeviceList'
+import { PRESET_CONTROL_LABELS } from '@/components/perform/PresetControls'
 import { Card, FieldLabel, Hint, SectionTitle, inputClass, monoInputClass } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import pkg from '@/package.json'
@@ -35,6 +36,8 @@ function keyOwners(config: ControllerConfig, bank: BankId): Map<string, { owner:
   if (tap.tap) map.set(tap.tap, { owner: 'global', label: 'Tap delay: TAP' })
   if (tap.cycleSubdivision) map.set(tap.cycleSubdivision, { owner: 'global', label: 'Tap delay: subdivision' })
   if (tap.disable) map.set(tap.disable, { owner: 'global', label: 'Tap delay: off' })
+  for (const [action, code] of Object.entries(config.presetControlBindings ?? {}))
+    if (code) map.set(code, { owner: 'global', label: `Preset: ${PRESET_CONTROL_LABELS[action as keyof typeof PRESET_CONTROL_LABELS]}` })
   for (const [action, code] of Object.entries(config.looper?.bindings ?? {}))
     if (code) map.set(code, { owner: 'global', label: `Looper: ${action}` })
   return map

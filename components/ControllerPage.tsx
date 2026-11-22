@@ -14,7 +14,7 @@ import { resolveLooperConfig } from '@/lib/looper'
 import { resolveSongbookConfig } from '@/lib/songbook'
 import { buildPanicMessages } from '@/lib/midi'
 import { profileOf } from '@/lib/profiles'
-import { CFW_TAP_WINDOW_MS, cfwBpm, cfwDelayMs, cfwTempoMessages } from '@/lib/pocketMasterCfwMidi'
+import { CFW_SCENE_CC, CFW_STOMP_CC, CFW_TAP_WINDOW_MS, cfwBpm, cfwDelayMs, cfwTempoMessages } from '@/lib/pocketMasterCfwMidi'
 import { padKeys } from '@/lib/keys'
 import type {
   ControllerConfig,
@@ -22,13 +22,17 @@ import type {
   LooperCommands,
   LooperConfig,
   MidiMessage,
+  PresetControlBindings,
   PresetPad,
   PresetTempo,
+  SceneId,
+  StompSwitchId,
   SetlistItem,
   SongbookConfig,
   TapTempoBindings,
 } from '@/lib/types'
 import { COMMAND_LABELS } from '@/components/looper/shared'
+import { PRESET_CONTROL_LABELS } from '@/components/perform/PresetControls'
 import { TopBar } from '@/components/shell/TopBar'
 import { BottomTabs, NavRail } from '@/components/shell/Nav'
 import { StatusBar } from '@/components/shell/StatusBar'
@@ -73,6 +77,10 @@ export default function ControllerPage() {
     patchConfig,
     enterSoloMode,
     exitSoloMode,
+    activeScene,
+    selectScene,
+    stompStates,
+    toggleStomp,
   } = controller
   const output = useOutput()
   const { send, sendRaw } = output
@@ -213,6 +221,7 @@ export default function ControllerPage() {
         ({ fxId, on }, i) => sendFx(fxId, on, i),
       )
     } else if (activePresetId === id) {
+      if (config.presets.find((p) => p.id === id)?.soloEnabled === false) return
       enterSoloMode(id).forEach((fxId, i) => sendFx(fxId, true, i))
     } else {
       const preset = config.presets.find((p) => p.id === id)
@@ -252,6 +261,37 @@ export default function ControllerPage() {
     toggleFx(id)
   }
 
+  const activePreset = config.presets.find((p) => p.id === activePresetId)
+  const presetModes = profileOf(config).presetModes
+
+  // The pedal recalls the scene's blocks itself, so only the scene CC is sent; the FX pads follow the app's scene list.
+  const handleScene = (pressed: SceneId) => {
+    // Like the pedal, pressing the playing scene again goes back to BASE.
+    const scene = pressed === activeScene ? 'base' : pressed
+    if (!presetModes || !activePreset?.scenes || scene === activeScene) return
+    // BASE is sent as CC 85 rather than relying on "same scene again = BASE".
+    const label = scene === 'base' ? 'BASE' : activePreset.scenes[scene].name || PRESET_CONTROL_LABELS[scene]
+    send(
+      { channel: config.defaultChannel ?? 1, type: 'controlChange', data1: CFW_SCENE_CC[scene], data2: 127 },
+      `Scene ${label}`,
+    )
+    selectScene(scene)
+  }
+
+  const handleStomp = (id: StompSwitchId) => {
+    const sw = activePreset?.stomp?.[id]
+    if (!presetModes || !sw) return
+    const on = !stompStates[id]
+    send(
+      { channel: config.defaultChannel ?? 1, type: 'controlChange', data1: CFW_STOMP_CC[id], data2: 127 },
+      `STOMP ${sw.name || PRESET_CONTROL_LABELS[id]} ${on ? 'on' : 'off'}`,
+    )
+    toggleStomp(id)
+  }
+
+  const handlePresetControl = (id: SceneId | StompSwitchId) => (id === 'fs1' || id === 'fs2' ? handleStomp(id) : handleScene(id))
+  const handleUpdatePresetControlBindings = (presetControlBindings: PresetControlBindings) => patchConfig({ presetControlBindings })
+
   const handlePanic = () => buildPanicMessages().forEach((m) => send(m, 'Panic'))
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,9 +316,11 @@ export default function ControllerPage() {
   const looperKeys = Object.values(looperConfig.bindings).filter(Boolean) as string[]
   const tapKeys = Object.values(config.tapTempoBindings ?? {}).filter(Boolean) as string[]
   const songbookKeys = Object.values(songbookConfig.bindings).filter(Boolean) as string[]
-  const tapOtherUsedKeys = new Set([...allPadKeys, ...looperKeys, ...songbookKeys])
-  const looperOtherUsedKeys = new Set([...allPadKeys, ...tapKeys, ...songbookKeys])
-  const songbookOtherUsedKeys = new Set([...allPadKeys, ...tapKeys, ...looperKeys])
+  const presetControlKeys = Object.values(config.presetControlBindings ?? {}).filter(Boolean) as string[]
+  const tapOtherUsedKeys = new Set([...allPadKeys, ...looperKeys, ...songbookKeys, ...presetControlKeys])
+  const looperOtherUsedKeys = new Set([...allPadKeys, ...tapKeys, ...songbookKeys, ...presetControlKeys])
+  const songbookOtherUsedKeys = new Set([...allPadKeys, ...tapKeys, ...looperKeys, ...presetControlKeys])
+  const presetControlOtherUsedKeys = new Set([...allPadKeys, ...tapKeys, ...looperKeys, ...songbookKeys])
 
   const looperActions = useMemo(
     () => ({
@@ -308,6 +350,7 @@ export default function ControllerPage() {
     onTap: tapControls.tap,
     onCycleSubdivision: tapControls.cycleSubdivision,
     onDisable: tapControls.disable,
+    onPresetControl: handlePresetControl,
     looperBindings: looperConfig.bindings,
     looperActions,
     songbookBindings: view === 'songbook' && songbook.run ? songbookConfig.bindings : null,
@@ -358,6 +401,12 @@ export default function ControllerPage() {
               fxStates={fxStates}
               onPreset={handlePresetClick}
               onFx={handleToggleFx}
+              activeScene={activeScene}
+              onScene={handleScene}
+              stompStates={stompStates}
+              onStomp={handleStomp}
+              onUpdatePresetControlBindings={handleUpdatePresetControlBindings}
+              presetControlOtherUsedKeys={presetControlOtherUsedKeys}
               tapTempo={tapControls}
               onUpdateTapBindings={handleUpdateTapBindings}
               tapOtherUsedKeys={tapOtherUsedKeys}

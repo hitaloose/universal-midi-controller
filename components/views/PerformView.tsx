@@ -1,6 +1,6 @@
 'use client'
 
-import type { BankId, ControllerConfig, LooperConfig, TapTempoBindings } from '@/lib/types'
+import type { BankId, ControllerConfig, LooperConfig, PresetControlBindings, SceneId, StompSwitchId, TapTempoBindings } from '@/lib/types'
 import { BANK_IDS } from '@/lib/types'
 import type { UseLooperReturn } from '@/hooks/useLooper'
 import type { useTapTempo } from '@/hooks/useTapTempo'
@@ -12,6 +12,7 @@ import { FxPad } from '@/components/FxPad'
 import { BankBar } from '@/components/perform/BankBar'
 import { TapDelayCard } from '@/components/perform/TapDelayCard'
 import { LooperMiniCard } from '@/components/perform/LooperMiniCard'
+import { PresetControls } from '@/components/perform/PresetControls'
 import { SectionTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 
@@ -24,6 +25,12 @@ type Props = {
   fxStates: Record<string, boolean>
   onPreset: (id: string) => void
   onFx: (id: string) => void
+  activeScene: SceneId
+  onScene: (scene: SceneId) => void
+  stompStates: Partial<Record<StompSwitchId, boolean>>
+  onStomp: (id: StompSwitchId) => void
+  onUpdatePresetControlBindings: (b: PresetControlBindings) => void
+  presetControlOtherUsedKeys: Set<string>
   tapTempo: ReturnType<typeof useTapTempo>
   onUpdateTapBindings: (b: TapTempoBindings) => void
   tapOtherUsedKeys: Set<string>
@@ -42,6 +49,8 @@ export function PerformView(props: Props) {
   const fxOnCount = config.fxPads.filter((f) => fxStates[f.id]).length
   const showTap = profile.tapDelay !== null && config.showTapDelay !== false
   const showLooper = config.showLooper !== false
+  const showScenes = profile.presetModes && !!activePreset?.scenes
+  const showStomp = profile.presetModes && !!(activePreset?.stomp?.fs1 || activePreset?.stomp?.fs2)
 
   const tapCard = (compact: boolean) => (
     <TapDelayCard
@@ -102,6 +111,20 @@ export function PerformView(props: Props) {
             </div>
           )}
         </section>
+
+        {activePreset && (showScenes || showStomp) && (
+          <PresetControls
+            preset={activePreset}
+            showScenes={showScenes}
+            activeScene={props.activeScene}
+            onScene={props.onScene}
+            stompStates={showStomp ? props.stompStates : {}}
+            onStomp={props.onStomp}
+            bindings={config.presetControlBindings ?? {}}
+            onUpdateBindings={props.onUpdatePresetControlBindings}
+            otherUsedKeys={props.presetControlOtherUsedKeys}
+          />
+        )}
 
         {config.fxPads.length > 0 && (
           <section aria-label="FX" className="flex flex-col gap-3">

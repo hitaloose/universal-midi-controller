@@ -5,6 +5,7 @@ const present = (keys: (string | undefined)[]) => keys.filter((k): k is string =
 export function globalKeys(config: ControllerConfig): string[] {
   return [
     ...present(Object.values(config.tapTempoBindings ?? {})),
+    ...present(Object.values(config.presetControlBindings ?? {})),
     ...present(Object.values(config.looper?.bindings ?? {})),
     ...present(Object.values(config.songbook?.bindings ?? {})),
   ]

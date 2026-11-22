@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { BankId, FxPad, MidiMessage, PresetPad, Subdivision } from '@/lib/types'
+import type { BankId, FxPad, MidiMessage, PresetPad, StompSwitch, Subdivision } from '@/lib/types'
 import { BANK_IDS } from '@/lib/types'
 import type { PedalboardProfile } from '@/lib/profiles'
 import { PAD_COLORS, padColor } from '@/lib/padColors'
@@ -51,6 +51,10 @@ export function PresetInspector(props: Props) {
   const isPocketMaster = profile.pfBanks
   const pmBank = presetNumber !== null && presetNumber > 50 ? 'F' : 'P'
   const color = padColor(draft.color)
+  const soloOn = draft.soloEnabled !== false
+  const isFactory = profile.pfBanks && presetNumber !== null && presetNumber > 50
+  const checkCols = 1 + (soloOn ? 1 : 0) + (draft.scenes ? 2 : 0)
+  const fxGrid = `minmax(96px,1fr) repeat(${checkCols}, 44px) minmax(96px,1fr)`
   const dirty = JSON.stringify(draft) !== JSON.stringify(preset)
 
   return (
@@ -181,18 +185,115 @@ export function PresetInspector(props: Props) {
           </div>
         )}
 
+        <div className="flex flex-col gap-2">
+          <FieldLabel>Modes</FieldLabel>
+          <div className="flex flex-col border border-line-soft rounded-xl overflow-hidden">
+            <ModeToggle
+              label="Solo"
+              hint="Press the active preset again to switch the solo FX on"
+              checked={soloOn}
+              onChange={(on) => set({ soloEnabled: on })}
+            />
+            {profile.presetModes && (
+              <>
+                <ModeToggle
+                  label="Scenes"
+                  hint={isFactory ? 'Factory presets (F01–F50) cannot store scenes' : 'BASE, SC1 and SC2 buttons; each scene has its own FX list'}
+                  checked={!!draft.scenes}
+                  disabled={isFactory && !draft.scenes}
+                  onChange={(on) =>
+                    set({
+                      scenes: on
+                        ? {
+                            sc1: { name: 'Scene 1', fxStates: { ...draft.fxInitialStates } },
+                            sc2: { name: 'Scene 2', fxStates: { ...draft.fxInitialStates } },
+                          }
+                        : undefined,
+                    })
+                  }
+                />
+                {draft.scenes && (
+                  <div className="grid grid-cols-2 gap-2 px-3.5 pb-3">
+                    {(['sc1', 'sc2'] as const).map((id) => (
+                      <label key={id} className="flex flex-col gap-1">
+                        <span className="text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-dim">{id.toUpperCase()} name</span>
+                        <input
+                          value={draft.scenes![id].name}
+                          onChange={(e) => set({ scenes: { ...draft.scenes!, [id]: { ...draft.scenes![id], name: e.target.value } } })}
+                          className="box-border h-9 rounded-lg border border-line bg-ground text-ink px-2 text-sm min-w-0"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <ModeToggle
+                  label="STOMP"
+                  hint="FS1 / FS2 buttons that toggle the block groups set on the pedal"
+                  checked={!!draft.stomp}
+                  onChange={(on) => set({ stomp: on ? { fs1: { name: 'FS1', initialOn: false } } : undefined })}
+                />
+                {draft.stomp && (
+                  <div className="flex flex-col gap-2 px-3.5 pb-3">
+                    {(['fs1', 'fs2'] as const).map((id) => {
+                      const sw = draft.stomp?.[id]
+                      const setSw = (next: StompSwitch | undefined) => {
+                        const stomp = { ...draft.stomp, [id]: next }
+                        set({ stomp: stomp.fs1 || stomp.fs2 ? stomp : undefined })
+                      }
+                      return (
+                        <div key={id} className="flex items-center gap-2.5">
+                          <label className="flex items-center gap-2 w-16 shrink-0 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              aria-label={`Show ${id.toUpperCase()}`}
+                              checked={!!sw}
+                              onChange={(e) => setSw(e.target.checked ? { name: id.toUpperCase(), initialOn: false } : undefined)}
+                              className="w-5 h-5 accent-fx cursor-pointer"
+                            />
+                            <span className="font-mono text-xs font-bold">{id.toUpperCase()}</span>
+                          </label>
+                          <input
+                            aria-label={`${id.toUpperCase()} name`}
+                            disabled={!sw}
+                            value={sw?.name ?? ''}
+                            onChange={(e) => sw && setSw({ ...sw, name: e.target.value })}
+                            className="box-border h-9 flex-1 rounded-lg border border-line bg-ground text-ink px-2 text-sm min-w-0 disabled:opacity-40"
+                          />
+                          <label className={`flex items-center gap-1.5 text-xs text-ink-dim shrink-0 ${sw ? 'cursor-pointer' : 'opacity-40'}`}>
+                            <input
+                              type="checkbox"
+                              disabled={!sw}
+                              checked={sw?.initialOn ?? false}
+                              onChange={(e) => sw && setSw({ ...sw, initialOn: e.target.checked })}
+                              className="w-5 h-5 accent-fx cursor-pointer"
+                            />
+                            On at start
+                          </label>
+                        </div>
+                      )
+                    })}
+                    <Hint>&quot;On at start&quot; is the group state saved in the pedal preset: the app cannot read it, so match it here.</Hint>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
         {fxPads.length > 0 && (
           <div className="flex flex-col gap-2">
             <FieldLabel>FX behavior</FieldLabel>
-            <div className="border border-line-soft rounded-xl overflow-hidden">
-              <div className="grid grid-cols-[minmax(0,1fr)_52px_52px_minmax(0,1fr)] gap-2 px-3 py-2 bg-surface text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-dim">
+            <div className="border border-line-soft rounded-xl overflow-x-auto">
+              <div style={{ gridTemplateColumns: fxGrid }} className="grid gap-2 px-3 py-2 bg-surface text-[11px] font-semibold tracking-[0.08em] uppercase text-ink-dim min-w-max">
                 <span>FX</span>
                 <span className="text-center">Start</span>
-                <span className="text-center">Solo</span>
+                {soloOn && <span className="text-center">Solo</span>}
+                {draft.scenes && <span className="text-center">SC1</span>}
+                {draft.scenes && <span className="text-center">SC2</span>}
                 <span>Alias</span>
               </div>
               {fxPads.map((fx) => (
-                <div key={fx.id} className="grid grid-cols-[minmax(0,1fr)_52px_52px_minmax(0,1fr)] gap-2 px-3 py-1.5 border-t border-line-soft items-center">
+                <div key={fx.id} style={{ gridTemplateColumns: fxGrid }} className="grid gap-2 px-3 py-1.5 border-t border-line-soft items-center min-w-max">
                   <span className="text-sm font-semibold truncate">{fx.name}</span>
                   <span className="flex justify-center">
                     <input
@@ -203,15 +304,39 @@ export function PresetInspector(props: Props) {
                       className="w-5 h-5 accent-fx cursor-pointer"
                     />
                   </span>
-                  <span className="flex justify-center">
-                    <input
-                      type="checkbox"
-                      aria-label={`${fx.name} on in solo mode`}
-                      checked={draft.fxSoloStates[fx.id] ?? false}
-                      onChange={(e) => set({ fxSoloStates: { ...draft.fxSoloStates, [fx.id]: e.target.checked } })}
-                      className="w-5 h-5 accent-solo cursor-pointer"
-                    />
-                  </span>
+                  {soloOn && (
+                    <span className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        aria-label={`${fx.name} on in solo mode`}
+                        checked={draft.fxSoloStates[fx.id] ?? false}
+                        onChange={(e) => set({ fxSoloStates: { ...draft.fxSoloStates, [fx.id]: e.target.checked } })}
+                        className="w-5 h-5 accent-solo cursor-pointer"
+                      />
+                    </span>
+                  )}
+                  {draft.scenes &&
+                    (['sc1', 'sc2'] as const).map((id) => {
+                      const scene = draft.scenes![id]
+                      return (
+                        <span key={id} className="flex justify-center">
+                          <input
+                            type="checkbox"
+                            aria-label={`${fx.name} on in ${scene.name || id.toUpperCase()}`}
+                            checked={scene.fxStates[fx.id] ?? draft.fxInitialStates[fx.id] ?? false}
+                            onChange={(e) =>
+                              set({
+                                scenes: {
+                                  ...draft.scenes!,
+                                  [id]: { ...scene, fxStates: { ...scene.fxStates, [fx.id]: e.target.checked } },
+                                },
+                              })
+                            }
+                            className="w-5 h-5 accent-preset cursor-pointer"
+                          />
+                        </span>
+                      )
+                    })}
                   <input
                     aria-label={`${fx.name} alias in this preset`}
                     placeholder={fx.name}
@@ -222,6 +347,7 @@ export function PresetInspector(props: Props) {
                 </div>
               ))}
             </div>
+            {draft.scenes && <Hint>Start is BASE. SC1 / SC2 are what the pads show when that scene plays: set them to match the scenes saved on the pedal.</Hint>}
           </div>
         )}
 
@@ -258,5 +384,23 @@ export function PresetInspector(props: Props) {
         <Button variant="primary" disabled={!dirty} onClick={() => props.onSave(draft)}>Save preset</Button>
       </div>
     </>
+  )
+}
+
+function ModeToggle(props: { label: string; hint: string; checked: boolean; disabled?: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <label className={`flex items-center gap-3 px-3.5 py-3 border-t border-line-soft first:border-t-0 ${props.disabled ? 'opacity-50' : 'cursor-pointer'}`}>
+      <input
+        type="checkbox"
+        checked={props.checked}
+        disabled={props.disabled}
+        onChange={(e) => props.onChange(e.target.checked)}
+        className="w-5 h-5 accent-preset cursor-pointer"
+      />
+      <span className="flex flex-col min-w-0">
+        <span className="text-[15px] font-semibold">{props.label}</span>
+        <span className="text-xs text-ink-dim">{props.hint}</span>
+      </span>
+    </label>
   )
 }

@@ -25,6 +25,8 @@ export type PedalboardProfile = {
   tapDelay: 'sysex' | 'tempoCc' | null
   /** Presets split into P01–P50 / F01–F50 banks (numbers 1–50 / 51–100). */
   pfBanks: boolean
+  /** Presets can show scene and STOMP buttons (Pocket Master CFW). */
+  presetModes: boolean
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -55,6 +57,7 @@ export const PROFILES: Record<PedalboardType, PedalboardProfile> = {
     fxOptions: POCKET_MASTER_FX_OPTIONS,
     defaultFx: [44, 45, 49, 50, 51, 43, 46, 48, 47, 58, 92],
     tapDelay: 'sysex',
+    presetModes: false,
   },
   pocketMasterCfw: {
     type: 'pocketMasterCfw',
@@ -64,6 +67,7 @@ export const PROFILES: Record<PedalboardType, PedalboardProfile> = {
     fxOptions: POCKET_MASTER_CFW_FX_OPTIONS,
     defaultFx: [44, 45, 49, 50, 51, 43, 46, 48, 47, 114, 58, 92],
     tapDelay: 'tempoCc',
+    presetModes: true,
   },
   valetonGp5: {
     type: 'valetonGp5',
@@ -79,6 +83,7 @@ export const PROFILES: Record<PedalboardType, PedalboardProfile> = {
     defaultFx: [49, 50, 55, 56, 57, 48, 52, 53, 54, 51, 58],
     tapDelay: null,
     pfBanks: false,
+    presetModes: false,
   },
   outros: {
     type: 'outros',
@@ -93,6 +98,7 @@ export const PROFILES: Record<PedalboardType, PedalboardProfile> = {
     defaultFx: [],
     tapDelay: null,
     pfBanks: false,
+    presetModes: false,
   },
 }
 

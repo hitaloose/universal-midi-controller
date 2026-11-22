@@ -14,6 +14,24 @@ export type PresetTempo = {
   subdivision: Subdivision
 }
 
+export type SceneId = 'base' | 'sc1' | 'sc2'
+
+/** A pedal scene: the FX pads it turns on/off. A pad missing here follows the preset's start state (BASE). */
+export type PresetScene = {
+  name: string
+  fxStates: Record<string, boolean>
+}
+
+export type StompSwitchId = 'fs1' | 'fs2'
+
+/** A STOMP footswitch: toggles a block group on the pedal; `initialOn` is the group state the preset loads with. */
+export type StompSwitch = {
+  name: string
+  initialOn: boolean
+}
+
+export type PresetControlBindings = Partial<Record<SceneId | StompSwitchId, string>>
+
 export type PadColor = 'amber' | 'mint' | 'blue' | 'violet' | 'coral'
 
 export type MidiMessage = {
@@ -44,6 +62,12 @@ export type PresetPad = {
   color?: PadColor
   /** Missing: the app sends no tempo and the pedal keeps the preset's own. */
   tempo?: PresetTempo
+  /** Pressing the active preset again enters solo. Missing means on (configs saved before it existed). */
+  soloEnabled?: boolean
+  /** Scene buttons (SC1 / SC2, BASE is the preset itself). Missing: no scene buttons. */
+  scenes?: Record<'sc1' | 'sc2', PresetScene>
+  /** STOMP buttons; only the switches present are shown. Missing: no STOMP buttons. */
+  stomp?: Partial<Record<StompSwitchId, StompSwitch>>
 }
 
 export type TapTempoBindings = {
@@ -61,6 +85,7 @@ export type ControllerConfig = {
   presets: PresetPad[]
   fxPads: FxPad[]
   tapTempoBindings?: TapTempoBindings
+  presetControlBindings?: PresetControlBindings
   looper?: LooperConfig
   songbook?: SongbookConfig
 }

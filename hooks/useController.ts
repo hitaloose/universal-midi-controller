@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import type { BankId, ControllerConfig, FxPad, PresetPad } from '@/lib/types'
+import type { BankId, ControllerConfig, FxPad, PresetPad, SceneId, StompSwitchId } from '@/lib/types'
 import { loadConfig, saveConfig } from '@/lib/storage'
 import { makeFxPad, makePreset, profileOf } from '@/lib/profiles'
 import { makeId } from '@/lib/utils'
@@ -14,6 +14,12 @@ type UseControllerReturn = {
   setActiveBank: (bank: BankId) => void
   fxStates: Record<string, boolean>
   activatePreset: (id: string) => void
+  /** Scene playing on the pedal for the active preset (always BASE after a preset change). */
+  activeScene: SceneId
+  /** Shows a scene's FX states; leaves solo, since the scene sets the blocks. */
+  selectScene: (scene: SceneId) => void
+  stompStates: Partial<Record<StompSwitchId, boolean>>
+  toggleStomp: (id: StompSwitchId) => void
   toggleFx: (id: string) => void
   updateConfig: (config: ControllerConfig) => void
   patchConfig: (partial: Partial<ControllerConfig>) => void
@@ -44,6 +50,16 @@ function swapAt<T>(arr: T[], i: number, j: number): T[] {
   return next
 }
 
+type SceneFx = Record<SceneId, Record<string, boolean>>
+
+/** FX states of every scene of a preset; a pad a scene does not list follows BASE. */
+function buildSceneFx(preset: PresetPad, fxPads: FxPad[]): SceneFx {
+  const base = Object.fromEntries(fxPads.map((fx) => [fx.id, preset.fxInitialStates[fx.id] ?? false]))
+  const scene = (id: 'sc1' | 'sc2') =>
+    Object.fromEntries(fxPads.map((fx) => [fx.id, preset.scenes?.[id].fxStates[fx.id] ?? base[fx.id]]))
+  return { base, sc1: scene('sc1'), sc2: scene('sc2') }
+}
+
 function buildDefaultFxStates(fxPads: FxPad[]): Record<string, boolean> {
   return Object.fromEntries(fxPads.map((fx) => [fx.id, false]))
 }
@@ -55,6 +71,10 @@ export function useController(): UseControllerReturn {
   const [fxSnapshot, setFxSnapshot] = useState<Record<string, boolean> | null>(null)
   const [fxStates, setFxStates] = useState<Record<string, boolean>>({})
   const [activeBank, setActiveBank] = useState<BankId>('A')
+  const [activeScene, setActiveScene] = useState<SceneId>('base')
+  // Live FX states per scene, like the pedal: a block switched inside a scene stays that way in it.
+  const [sceneFx, setSceneFx] = useState<SceneFx | null>(null)
+  const [stompStates, setStompStates] = useState<Partial<Record<StompSwitchId, boolean>>>({})
 
   useEffect(() => {
     const saved = loadConfig()
@@ -78,9 +98,29 @@ export function useController(): UseControllerReturn {
         }
         return next
       })
+      // The pedal starts every preset on BASE with its saved STOMP group states.
+      setActiveScene('base')
+      setSceneFx(buildSceneFx(preset, config.fxPads))
+      setStompStates({ fs1: preset.stomp?.fs1?.initialOn ?? false, fs2: preset.stomp?.fs2?.initialOn ?? false })
     },
     [config],
   )
+
+  const selectScene = useCallback(
+    (scene: SceneId) => {
+      if (!sceneFx || scene === activeScene) return
+      setSceneFx({ ...sceneFx, [activeScene]: fxStates })
+      setFxStates((prev) => ({ ...prev, ...sceneFx[scene] }))
+      setActiveScene(scene)
+      setSoloPresetId(null)
+      setFxSnapshot(null)
+    },
+    [sceneFx, activeScene, fxStates],
+  )
+
+  const toggleStomp = useCallback((id: StompSwitchId) => {
+    setStompStates((prev) => ({ ...prev, [id]: !prev[id] }))
+  }, [])
 
   const enterSoloMode = useCallback(
     (id: string): string[] => {
@@ -141,6 +181,9 @@ export function useController(): UseControllerReturn {
     setActivePresetId(null)
     setSoloPresetId(null)
     setFxSnapshot(null)
+    setActiveScene('base')
+    setSceneFx(null)
+    setStompStates({})
   }, [])
 
   // Saves settings that don't affect pads (e.g. looper) without resetting preset/FX state.
@@ -276,6 +319,10 @@ export function useController(): UseControllerReturn {
     setActiveBank,
     fxStates,
     activatePreset,
+    activeScene,
+    selectScene,
+    stompStates,
+    toggleStomp,
     toggleFx,
     updateConfig,
     patchConfig,
