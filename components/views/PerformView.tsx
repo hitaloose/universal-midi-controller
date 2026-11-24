@@ -85,7 +85,7 @@ export function PerformView(props: Props) {
             <span className="hidden sm:inline text-[13px] text-ink-dim">Press the active preset again for solo.</span>
           </div>
           {presets.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 sm:gap-3.5">
+            <div className="grid grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2.5 sm:gap-3">
               {presets.map((p, i) => {
                 const isSolo = soloPresetId === p.id
                 const isActive = activePresetId === p.id && !isSolo

@@ -15,7 +15,8 @@ export const PRESET_CONTROL_LABELS: Record<SceneId | StompSwitchId, string> = {
   fs2: 'FS2',
 }
 
-const SCENE_IDS: SceneId[] = ['base', 'sc1', 'sc2']
+/** Base has no button: pressing the active scene again returns to base. */
+const SCENE_IDS: Exclude<SceneId, 'base'>[] = ['sc1', 'sc2']
 const STOMP_IDS: StompSwitchId[] = ['fs1', 'fs2']
 
 type Props = {
@@ -36,7 +37,7 @@ export function PresetControls(props: Props) {
   const { preset, showScenes, activeScene, stompStates, bindings } = props
   const [isConfigOpen, setIsConfigOpen] = useState(false)
   const stompIds = STOMP_IDS.filter((id) => preset.stomp?.[id])
-  const sceneName = (id: SceneId) => (id === 'base' ? 'Base' : preset.scenes?.[id].name || PRESET_CONTROL_LABELS[id])
+  const sceneName = (id: Exclude<SceneId, 'base'>) => preset.scenes?.[id].name || PRESET_CONTROL_LABELS[id]
   const shownIds: (SceneId | StompSwitchId)[] = [...(showScenes ? SCENE_IDS : []), ...stompIds]
 
   const keyUsed = (except: SceneId | StompSwitchId) =>
@@ -63,57 +64,50 @@ export function PresetControls(props: Props) {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-2.5 sm:gap-3">
-        {showScenes && (
-          <div role="group" aria-label="Scene" className="flex-[3_1_300px] grid grid-cols-3 gap-2.5 sm:gap-3">
-            {SCENE_IDS.map((id) => {
-              const on = activeScene === id
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => props.onScene(id)}
-                  className={`flex flex-col justify-between items-start text-left min-h-[64px] sm:min-h-[76px] px-3.5 py-2.5 rounded-[14px] border cursor-pointer select-none transition-colors ${
-                    on ? 'bg-preset border-preset-hi text-preset-ink' : 'bg-surface border-line-soft text-ink hover:bg-surface-2'
-                  }`}
-                >
-                  <span className="flex w-full items-center justify-between gap-2">
-                    <span className={`font-mono text-xs font-bold tracking-[0.1em] ${on ? '' : 'text-ink-mute'}`}>{PRESET_CONTROL_LABELS[id]}</span>
-                    <KeyCap code={bindings[id]} tone={on ? 'onAmber' : 'idle'} />
-                  </span>
-                  <span className="text-base font-bold leading-tight break-words">{sceneName(id)}</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-        {stompIds.length > 0 && (
-          <div role="group" aria-label="STOMP" className={`flex-[2_1_200px] grid gap-2.5 sm:gap-3 ${stompIds.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {stompIds.map((id) => {
-              const on = !!stompStates[id]
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => props.onStomp(id)}
-                  className={`flex flex-col justify-between items-start text-left min-h-[64px] sm:min-h-[76px] px-3.5 py-2.5 rounded-[14px] border cursor-pointer select-none transition-colors ${
-                    on ? 'bg-fx-deep border-fx-line text-fx-ink' : 'bg-surface border-line-soft text-ink hover:bg-surface-2'
-                  }`}
-                >
-                  <span className="flex w-full items-center justify-between gap-2">
-                    <span className={`font-mono text-xs font-bold tracking-[0.1em] ${on ? 'text-fx' : 'text-ink-mute'}`}>
-                      {PRESET_CONTROL_LABELS[id]} · {on ? 'ON' : 'OFF'}
-                    </span>
-                    <KeyCap code={bindings[id]} tone={on ? 'onMint' : 'idle'} />
-                  </span>
-                  <span className="text-base font-bold leading-tight break-words">{preset.stomp?.[id]?.name || PRESET_CONTROL_LABELS[id]}</span>
-                </button>
-              )
-            })}
-          </div>
-        )}
+      <div className="grid grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2.5 sm:gap-3">
+        {showScenes &&
+          SCENE_IDS.map((id) => {
+            const on = activeScene === id
+            return (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => props.onScene(id)}
+                className={`flex flex-col justify-between items-start text-left min-h-[64px] sm:min-h-[76px] px-3.5 py-2.5 rounded-[14px] border cursor-pointer select-none transition-colors ${
+                  on ? 'bg-preset border-preset-hi text-preset-ink' : 'bg-surface border-line-soft text-ink hover:bg-surface-2'
+                }`}
+              >
+                <span className="flex w-full items-center justify-between gap-2">
+                  <span className={`font-mono text-xs font-bold tracking-[0.1em] ${on ? '' : 'text-ink-mute'}`}>{PRESET_CONTROL_LABELS[id]}</span>
+                  <KeyCap code={bindings[id]} tone={on ? 'onAmber' : 'idle'} />
+                </span>
+                <span className="text-base font-bold leading-tight break-words">{sceneName(id)}</span>
+              </button>
+            )
+          })}
+        {stompIds.map((id) => {
+          const on = !!stompStates[id]
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => props.onStomp(id)}
+              className={`flex flex-col justify-between items-start text-left min-h-[64px] sm:min-h-[76px] px-3.5 py-2.5 rounded-[14px] border cursor-pointer select-none transition-colors ${
+                on ? 'bg-fx-deep border-fx-line text-fx-ink' : 'bg-surface border-line-soft text-ink hover:bg-surface-2'
+              }`}
+            >
+              <span className="flex w-full items-center justify-between gap-2">
+                <span className={`font-mono text-xs font-bold tracking-[0.1em] ${on ? 'text-fx' : 'text-ink-mute'}`}>
+                  {PRESET_CONTROL_LABELS[id]} · {on ? 'ON' : 'OFF'}
+                </span>
+                <KeyCap code={bindings[id]} tone={on ? 'onMint' : 'idle'} />
+              </span>
+              <span className="text-base font-bold leading-tight break-words">{preset.stomp?.[id]?.name || PRESET_CONTROL_LABELS[id]}</span>
+            </button>
+          )
+        })}
       </div>
 
       {isConfigOpen && (

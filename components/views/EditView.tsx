@@ -85,7 +85,7 @@ export function EditView(props: Props) {
 
         <section aria-label="Presets" className="flex flex-col gap-3">
           <SectionTitle>Presets · Bank {activeBank}</SectionTitle>
-          <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 sm:gap-3.5">
+          <div className="grid grid-cols-3 sm:grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2.5 sm:gap-3">
             {presets.map((p, i) => {
               const selected = selection?.kind === 'preset' && selection.id === p.id
               return (
